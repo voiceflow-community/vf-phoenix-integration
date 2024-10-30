@@ -21,7 +21,7 @@ export const simpleFeedback = async (req: Request, res: Response): Promise<void>
       headers: {
         "Content-Type": "application/json",
         accept: "application/json",
-        Authorization: `Bearer ${process.env.PHOENIX_USER_API_KEY}`,
+        Authorization: `Bearer ${process.env.PHOENIX_API_KEY}`,
       },
       body: JSON.stringify({
         data: [
