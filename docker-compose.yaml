@@ -3,7 +3,7 @@ services:
     image: arizephoenix/phoenix:latest
     pull_policy: always
     ports:
-      - "6006:6006"
+      - "${PHOENIX_PORT}:${PHOENIX_PORT}"
     environment:
       - PHOENIX_ENABLE_AUTH=${PHOENIX_ENABLE_AUTH}
       - PHOENIX_SECRET=${PHOENIX_SECRET} # openssl rand -hex 16
