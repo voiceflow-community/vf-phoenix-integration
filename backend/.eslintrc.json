@@ -1,0 +1,6 @@
+{
+  "extends": "eslint:recommended",
+  "env": { "node": true },
+  "parser": "@typescript-eslint/parser",
+  "plugins": ["@typescript-eslint"]
+}

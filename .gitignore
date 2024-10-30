@@ -1,0 +1,8 @@
+.env
+.env.local
+node_modules
+dist
+backend/dist
+backend/node_modules
+data
+backup

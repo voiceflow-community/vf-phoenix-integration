@@ -1,0 +1,32 @@
+services:
+  phoenix:
+    image: arizephoenix/phoenix:latest
+    pull_policy: always
+    ports:
+      - "6006:6006"
+    environment:
+      - PHOENIX_ENABLE_AUTH=${PHOENIX_ENABLE_AUTH}
+      - PHOENIX_SECRET=${PHOENIX_SECRET} # openssl rand -hex 16
+      - PHOENIX_CSRF_TRUSTED_ORIGINS=${PHOENIX_CSRF_TRUSTED_ORIGINS}
+    volumes:
+      - ./data/phoenix:/root/.phoenix  # Mount a local directory to persist data
+  backend:
+    build: backend
+    ports:
+      - "${PORT}:${PORT}"
+    environment:
+      - VOICEFLOW_DOMAIN=${VOICEFLOW_DOMAIN}
+      - VOICEFLOW_API_KEY=${VOICEFLOW_API_KEY}
+      - VOICEFLOW_VERSION_ID=${VOICEFLOW_VERSION_ID}
+      - VOICEFLOW_PROJECT_ID=${VOICEFLOW_PROJECT_ID}
+      - COLLECTOR_ENDPOINT=${COLLECTOR_ENDPOINT}
+      - PHOENIX_API_ENDPOINT=${PHOENIX_API_ENDPOINT}
+      - PHOENIX_PROJECT_NAME=${PHOENIX_PROJECT_NAME}
+      - PHOENIX_API_KEY=${PHOENIX_API_KEY}
+      - TOKEN_CONSUMPTION_TYPE=${TOKEN_CONSUMPTION_TYPE}
+      - NODE_ENV=${NODE_ENV}
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:${PORT}"]
+      interval: 5s
+      timeout: 1s
+      retries: 5
