@@ -4,7 +4,6 @@ import {
   MimeType,
   OpenInferenceSpanKind,
   SemanticConventions,
-  SEMRESATTRS_PROJECT_NAME,
 } from "@arizeai/openinference-semantic-conventions";
 
 const VOICEFLOW_API_KEY = process.env.VOICEFLOW_API_KEY;
@@ -23,7 +22,7 @@ export const log = async (req: Request, res: Response) => {
   // Start parent span for the entire chat operation
   tracer.startActiveSpan("chat", async (parentSpan) => {
     try {
-      const { messages, metadata = {}, user = "unknown", tags = [], projectName = null } = req.body;
+      const { messages, metadata = {}, user = "unknown", tags = [] } = req.body;
 
       parentSpan.setAttributes({
         [SemanticConventions.OPENINFERENCE_SPAN_KIND]: OpenInferenceSpanKind.CHAIN,
@@ -41,7 +40,7 @@ export const log = async (req: Request, res: Response) => {
       const systemMessage = messages.find((msg: Message) => msg.role === 'system');
       const retrievedDocuments = systemMessage?.content?.split('Provided details: ')[1] || '';
       const conversationHistoryIndex = retrievedDocuments.indexOf('3. Conversation history:');
-      const truncatedDocuments = conversationHistoryIndex !== -1 
+      const truncatedDocuments = conversationHistoryIndex !== -1
         ? retrievedDocuments.substring(0, conversationHistoryIndex)
         : retrievedDocuments;
 
@@ -74,7 +73,7 @@ export const log = async (req: Request, res: Response) => {
           [SemanticConventions.INPUT_VALUE]: JSON.stringify({ messages }),
           [SemanticConventions.INPUT_MIME_TYPE]: MimeType.JSON,
         });
-        const response = await fetch(`https://${VOICEFLOW_DOMAIN}/state/user/${req.ip}/interact`, {
+        const response = await fetch(`https://${VOICEFLOW_DOMAIN}/state/user/${user}/interact`, {
           method: 'POST',
           headers: {
             'Authorization': VOICEFLOW_API_KEY,
@@ -150,7 +149,7 @@ export const log = async (req: Request, res: Response) => {
         const outputValue = JSON.stringify({
           messages: [
             {
-              role: "assistant", 
+              role: "assistant",
               content: assistantReply,
             },
           ],
