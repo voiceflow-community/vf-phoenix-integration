@@ -1,5 +1,4 @@
 import { Request, Response } from "express";
-import parser from 'ua-parser-js';
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 import {
   MimeType,
@@ -13,8 +12,6 @@ const VOICEFLOW_VERSION_ID = process.env.VOICEFLOW_VERSION_ID || 'development';
 const MODE = process.env.MODE?.toLowerCase() || 'widget';
 
 export const interact = async (req: Request, res: Response) => {
-  const tracer = trace.getTracer("voiceflow-service");
-  // Start parent span for the entire chat operation
 
     try {
       const { projectId, userId } = req.params;
@@ -86,6 +83,99 @@ export const interact = async (req: Request, res: Response) => {
           body,
           req.headers
         );
+        const tracer = trace.getTracer("voiceflow-service");
+
+        tracer.startActiveSpan("chat", async (parentSpan) => {
+          try {
+            parentSpan.setAttributes({
+              [SemanticConventions.OPENINFERENCE_SPAN_KIND]: OpenInferenceSpanKind.CHAIN,
+              [SemanticConventions.INPUT_VALUE]: JSON.stringify({ messages: [
+                {
+                  "role": "system",
+                  "content": traceInfo.aiParameters.system || ""
+                },
+                {
+                  "role": "assistant",
+                  "content": traceInfo.aiParameters.assistant || ""
+                },
+                {
+                  "role": "user",
+                  "content": traceInfo.userQuery || ""
+                }
+
+              ]}),
+              [SemanticConventions.INPUT_MIME_TYPE]: MimeType.JSON,
+            });
+
+            const spanId = parentSpan.spanContext().spanId;
+            parentSpan.setAttributes({
+              [SemanticConventions.LLM_MODEL_NAME]: (traceInfo as any).aiParameters.model,
+              [SemanticConventions.LLM_TOKEN_COUNT_PROMPT]: (traceInfo as any).aiParameters.queryTokens,
+              [SemanticConventions.LLM_TOKEN_COUNT_COMPLETION]: (traceInfo as any).aiParameters.answerTokens,
+              [SemanticConventions.LLM_TOKEN_COUNT_TOTAL]: (traceInfo as any).aiParameters.tokens,
+              [SemanticConventions.OUTPUT_VALUE]: (traceInfo as any).aiParameters.output,
+            });
+
+            tracer.startActiveSpan("llm_call", async (llmSpan) => {
+              llmSpan.setAttributes({
+                [SemanticConventions.OPENINFERENCE_SPAN_KIND]: OpenInferenceSpanKind.LLM,
+                [SemanticConventions.INPUT_VALUE]: JSON.stringify({ messages: [
+                  {
+                    "role": "system",
+                    "content": traceInfo.aiParameters.system || ""
+                  },
+                  {
+                    "role": "assistant",
+                    "content": traceInfo.aiParameters.assistant || ""
+                  },
+                  {
+                    "role": "user",
+                    "content": traceInfo.userQuery || ""
+                  }
+
+                ]}),
+                [SemanticConventions.INPUT_MIME_TYPE]: MimeType.JSON,
+                [SemanticConventions.LLM_MODEL_NAME]: (traceInfo as any).aiParameters.model,
+                [SemanticConventions.LLM_TOKEN_COUNT_PROMPT]: (traceInfo as any).aiParameters.queryTokens,
+                [SemanticConventions.LLM_TOKEN_COUNT_COMPLETION]: (traceInfo as any).aiParameters.answerTokens,
+                [SemanticConventions.LLM_TOKEN_COUNT_TOTAL]: (traceInfo as any).aiParameters.tokens,
+                [SemanticConventions.OUTPUT_VALUE]: (traceInfo as any).aiParameters.output,
+              });
+              llmSpan.setStatus({ code: SpanStatusCode.OK });
+              llmSpan.end();
+            });
+            // Set parent span attributes with final output
+            const outputValue = JSON.stringify({
+              messages: [
+                {
+                  role: "assistant",
+                  content: (traceInfo as any).aiParameters.output,
+                },
+              ],
+            });
+            parentSpan.setAttributes({
+              [SemanticConventions.OUTPUT_VALUE]: outputValue,
+              [SemanticConventions.OUTPUT_MIME_TYPE]: MimeType.JSON,
+              [`${SemanticConventions.LLM_OUTPUT_MESSAGES}.0.${SemanticConventions.MESSAGE_CONTENT}`]: (traceInfo as any).aiParameters.output,
+              [`${SemanticConventions.LLM_OUTPUT_MESSAGES}.0.${SemanticConventions.MESSAGE_ROLE}`]: "assistant",
+              // [SemanticConventions.METADATA]: JSON.stringify(metadata),
+              [SemanticConventions.USER_ID]: userId,
+            });
+
+            parentSpan.setStatus({ code: SpanStatusCode.OK });
+            parentSpan.end();
+          } catch (error) {
+            console.error("Error:", error);
+            parentSpan.setStatus({
+              code: SpanStatusCode.ERROR,
+              message: (error as Error).message,
+            });
+            parentSpan.end();
+            return res.status(500).json({
+              error: (error as Error).message,
+            });
+          }
+        })
 
         // Log or process the trace info as needed
         console.log('Trace Info:', JSON.stringify(traceInfo, null, 2));
@@ -113,20 +203,12 @@ function extractTraceInfo(trace: any[], requestBody: any, requestHeaders: any) {
 
   const output = {
     headers: {
-      os: null as string | null,
-      device: null as string | null,
-      browser: null as string | null,
       origin: hOrigin,
       referer: hReferer,
       ip: hIP,
       session: hSession,
       version: hVersion,
     },
-    actionType: null,
-    actionValue: null,
-    matchedIntent: null,
-    confidence: null,
-    model: null,
     userQuery: null as string | null,
     aiResponse: null as string | null,
     aiParameters: {
@@ -140,16 +222,6 @@ function extractTraceInfo(trace: any[], requestBody: any, requestHeaders: any) {
       answerTokens: null as number | null,
       tokens: null as number | null,
       multiplier: null as number | null,
-    },
-    tokenConsumption: {
-      total: 0,
-      query: 0,
-      answer: 0,
-    },
-    apiCalls: {
-      total: 0,
-      successful: 0,
-      failed: 0,
     },
     textResponses: [] as string[],
     endOfConvo: false,
