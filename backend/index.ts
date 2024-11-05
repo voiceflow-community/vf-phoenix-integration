@@ -17,7 +17,20 @@ app.use(cors({
     : true, // Allow all origins in development
   credentials: true, // If you need to support credentials
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'versionid', 'userid', 'sessionid'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'Accept',
+    'versionid',
+    'userid',
+    'sessionid',
+    'x-forwarded-for',
+    'origin',
+    'referer'
+  ],
+  exposedHeaders: ['Content-Length', 'Content-Type'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 }));
 
 app.use(express.json());
