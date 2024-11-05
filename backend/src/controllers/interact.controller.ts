@@ -244,7 +244,7 @@ function extractTraceInfo(trace: any[], requestBody: any, requestHeaders: any) {
       output.aiResponse = item.payload.message;
     }
 
-    if (item.type === 'debug') {
+    if (item.type === 'debug' && item.payload.type.startsWith('ai-')) {
       processDebugItem(item, output);
     }
   });
