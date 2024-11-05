@@ -14,7 +14,7 @@ const port = parseInt(process.env.PORT || "5252");
 app.use(cors({
   origin: process.env.NODE_ENV === 'production'
     ? process.env.ALLOWED_ORIGINS?.split(',') // Allow multiple origins in production
-    : true, // Allow all origins in development
+    : '*', // Allow all origins in development
   credentials: true, // If you need to support credentials
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: [
