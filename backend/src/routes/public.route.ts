@@ -26,9 +26,6 @@ const simpleProxy = async (req: Request, res: Response) => {
   }
 };
 
-router.route("/:projectId/publishing").get(simpleProxy);
-router.route("/:projectId/publishing").options(simpleProxy);
-
 router.route("/:projectId/state/user/:userId/interact").post(
   async (req: Request, res: Response): Promise<void> => {
     await interact(req, res);
@@ -40,5 +37,8 @@ router.route("/public/:projectId/state/user/:userId/interact").post(
     await interact(req, res);
   }
 );
+
+// Catch-all route for everything else
+router.use("*", simpleProxy);
 
 export default router;

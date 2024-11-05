@@ -197,3 +197,48 @@ function processDebugItem(item: any, output: any) {
     };
   }
 }
+
+
+/* Trace Info: {
+  "headers": {
+    "os": null,
+    "device": null,
+    "browser": null,
+    "origin": "https://www.google.com",
+    "referer": "https://www.google.com/",
+    "ip": "90.26.55.172",
+    "session": null,
+    "version": "development"
+  },
+  "actionType": null,
+  "actionValue": null,
+  "matchedIntent": null,
+  "confidence": null,
+  "model": null,
+  "userQuery": "How tall is the eiffel tower?",
+  "aiResponse": "Of course! The Eiffel Tower is approximately 1,083 feet (330 meters) tall, including its antennas. It was completed in 1889 as the entrance arch for the 1889 World's Fair held in Paris. \n\nWhat else would you like to know about the Eiffel Tower or perhaps about Paris in general?",
+  "aiParameters": {
+    "system": null,
+    "assistant": "Handle a conversation with the user. Try to answer their questions the best you can.",
+    "output": "Of course! The Eiffel Tower is approximately 1,083 feet (330 meters) tall, including its antennas. It was completed in 1889 as the entrance arch for the 1889 World's Fair held in Paris. \n\nWhat else would you like to know about the Eiffel Tower or perhaps about Paris in general?",
+    "model": "gpt-4o-mini",
+    "temperature": 0.7,
+    "maxTokens": 364,
+    "queryTokens": 1,
+    "answerTokens": 64,
+    "tokens": 65,
+    "multiplier": 0.08
+  },
+  "tokenConsumption": {
+    "total": 0,
+    "query": 0,
+    "answer": 0
+  },
+  "apiCalls": {
+    "total": 0,
+    "successful": 0,
+    "failed": 0
+  },
+  "textResponses": [],
+  "endOfConvo": false
+} */
