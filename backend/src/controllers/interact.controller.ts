@@ -64,9 +64,13 @@ export const interact = async (req: Request, res: Response) => {
       request: body,
       response: voiceflowResponse,
     });
-
+    console.log(response.headers);
     // Return response to widget
-    res.set(response.headers)
+    const safeHeaders = ['content-type', 'cache-control', 'expires'];
+    safeHeaders.forEach(header => {
+      const value = response.headers.get(header);
+      if (value) res.set(header, value);
+    });
     return res.status(response.status).send(voiceflowResponse) //res.json(voiceflowResponse);
 
   } catch (error) {
