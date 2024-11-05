@@ -6,8 +6,14 @@ const VOICEFLOW_DOMAIN = process.env.VOICEFLOW_DOMAIN || 'general-runtime.voicef
 const VOICEFLOW_VERSION_ID = process.env.VOICEFLOW_VERSION_ID || 'development';
 const MODE = process.env.MODE?.toLowerCase() || 'widget';
 
+console.log(MODE);
+
 export const interact = async (req: Request, res: Response) => {
   try {
+    const { projectId, userId } = req.params;
+    console.log(projectId, userId);
+    console.log(req.originalUrl);
+
     let targetUrl = `https://${VOICEFLOW_DOMAIN}${req.originalUrl}`;
     let headers: any = {
       ...req.headers,
@@ -23,7 +29,7 @@ export const interact = async (req: Request, res: Response) => {
     if (MODE === 'api') {
       const userID = req.headers.userid || 'user';
       headers.authorization = VOICEFLOW_API_KEY;
-      targetUrl = `https://${VOICEFLOW_DOMAIN}/state/user/${userID}/interact`;
+      targetUrl = `https://${VOICEFLOW_DOMAIN}/state/user/${userId}/interact`;
     }
 
     const body = {
@@ -48,15 +54,16 @@ export const interact = async (req: Request, res: Response) => {
 
     const voiceflowResponse = await response.json();
 
-    if (MODE === 'api') {
-      console.log(extractTraceInfo(voiceflowResponse, body, req.headers));
-      const filteredResponse = voiceflowResponse.filter((item: any) => item.type !== 'debug');
-      return res.json(filteredResponse);
-    } else {
-      console.log(extractTraceInfo(voiceflowResponse.trace, body, req.headers));
-      voiceflowResponse.trace = voiceflowResponse.trace.filter((item: any) => item.type !== 'debug');
-      return res.json(voiceflowResponse);
-    }
+    // Log interaction details if needed
+    console.log({
+      projectId,
+      userId,
+      request: body,
+      response: voiceflowResponse,
+    });
+
+    // Return response to widget
+    return res.json(voiceflowResponse);
 
   } catch (error) {
     console.error("Error:", error);
