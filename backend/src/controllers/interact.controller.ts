@@ -155,18 +155,7 @@ function extractTraceInfo(trace: any[], requestBody: any, requestHeaders: any) {
     endOfConvo: false,
   };
 
-  if (MODE !== 'api') {
-    const ua = parser(requestHeaders['user-agent']);
 
-    let device = ua.getDevice();
-    output.headers.device = device ? `${device.vendor} ${device.model}` : null;
-
-    let browser = ua.getBrowser();
-    output.headers.browser = browser ? `${browser.name} ${browser.version}` : null;
-
-    let os = ua.getOS();
-    output.headers.os = os && os.name ? `${os.name} ${os.version}` : null;
-  }
 
   // Extract user query if action type is text
   if (requestBody?.action?.type === 'text' && requestBody.action.payload) {
