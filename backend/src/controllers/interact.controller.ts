@@ -8,11 +8,16 @@ const MODE = process.env.MODE?.toLowerCase() || 'widget';
 
 export const interact = async (req: Request, res: Response) => {
   try {
-    let targetUrl = `https://${VOICEFLOW_DOMAIN}/state/user/demo/interact`;
+    let targetUrl = `https://${VOICEFLOW_DOMAIN}${req.originalUrl}`;
     let headers: any = {
+      ...req.headers,
       'Content-Type': 'application/json',
-      'versionID': VOICEFLOW_VERSION_ID,
+      'host': new URL(`https://${VOICEFLOW_DOMAIN}`).host,
     };
+
+    // Remove headers that shouldn't be forwarded
+    delete headers['content-length'];
+    delete headers['origin'];
 
     // Handle different modes (API vs Widget)
     if (MODE === 'api') {
@@ -21,7 +26,6 @@ export const interact = async (req: Request, res: Response) => {
       targetUrl = `https://${VOICEFLOW_DOMAIN}/state/user/${userID}/interact`;
     }
 
-    // Add configuration to exclude certain types and disable TTS
     const body = {
       ...req.body,
       config: {
@@ -33,9 +37,9 @@ export const interact = async (req: Request, res: Response) => {
     };
 
     const response = await fetch(targetUrl, {
-      method: 'POST',
+      method: req.method,
       headers: headers,
-      body: JSON.stringify(body),
+      body: JSON.stringify(req.body),
     });
 
     if (!response.ok) {
@@ -44,17 +48,14 @@ export const interact = async (req: Request, res: Response) => {
 
     const voiceflowResponse = await response.json();
 
-    // Extract and log trace information
     if (MODE === 'api') {
       console.log(extractTraceInfo(voiceflowResponse, body, req.headers));
-      // Filter out debug items from response
       const filteredResponse = voiceflowResponse.filter((item: any) => item.type !== 'debug');
-      res.json(filteredResponse);
+      return res.json(filteredResponse);
     } else {
       console.log(extractTraceInfo(voiceflowResponse.trace, body, req.headers));
-      // Filter out debug items from trace
       voiceflowResponse.trace = voiceflowResponse.trace.filter((item: any) => item.type !== 'debug');
-      res.json(voiceflowResponse);
+      return res.json(voiceflowResponse);
     }
 
   } catch (error) {
