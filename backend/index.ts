@@ -42,7 +42,7 @@ app.get("/", (req: Request, res: Response) => {
   res.send("Voiceflow | Arize Phoenix Service");
 });
 
-app.use("/api/public", publicRouter);
+app.use("/public", publicRouter);
 
 app.use("/api/trace", traceRouter);
 
