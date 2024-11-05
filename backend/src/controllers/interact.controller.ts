@@ -6,13 +6,9 @@ const VOICEFLOW_DOMAIN = process.env.VOICEFLOW_DOMAIN || 'general-runtime.voicef
 const VOICEFLOW_VERSION_ID = process.env.VOICEFLOW_VERSION_ID || 'development';
 const MODE = process.env.MODE?.toLowerCase() || 'widget';
 
-console.log(MODE);
-
 export const interact = async (req: Request, res: Response) => {
   try {
     const { projectId, userId } = req.params;
-    console.log(projectId, userId);
-    console.log(req.originalUrl);
 
     let targetUrl = `https://${VOICEFLOW_DOMAIN}${req.originalUrl}`;
     let headers: any = {
@@ -26,7 +22,6 @@ export const interact = async (req: Request, res: Response) => {
 
     // Remove headers that shouldn't be forwarded
     delete headers['content-length'];
-    //delete headers['origin'];
 
     // Handle different modes (API vs Widget)
     if (MODE === 'api') {
@@ -58,20 +53,20 @@ export const interact = async (req: Request, res: Response) => {
     const voiceflowResponse = await response.json();
 
     // Log interaction details if needed
-    console.log({
+    console.log(JSON.stringify({
       projectId,
       userId,
       request: body,
       response: voiceflowResponse,
-    });
-    console.log(response.headers);
+    }, null, 2));
+
     // Return response to widget
     const safeHeaders = ['content-type', 'cache-control', 'expires'];
     safeHeaders.forEach(header => {
       const value = response.headers.get(header);
       if (value) res.set(header, value);
     });
-    return res.status(response.status).send(voiceflowResponse) //res.json(voiceflowResponse);
+    return res.status(response.status).send(voiceflowResponse)
 
   } catch (error) {
     console.error("Error:", error);

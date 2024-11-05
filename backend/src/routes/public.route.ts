@@ -19,7 +19,7 @@ const simpleProxy = async (req: Request, res: Response) => {
     });
 
     const data = await response.json();
-    res.json(data);
+    res.status(response.status).send(data)
   } catch (error) {
     console.error('Proxy error:', error);
     res.status(500).json({ error: 'Proxy error' });
@@ -27,6 +27,7 @@ const simpleProxy = async (req: Request, res: Response) => {
 };
 
 router.route("/:projectId/publishing").get(simpleProxy);
+router.route("/:projectId/publishing").options(simpleProxy);
 
 router.route("/:projectId/state/user/:userId/interact").post(
   async (req: Request, res: Response): Promise<void> => {
