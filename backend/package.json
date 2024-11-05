@@ -22,7 +22,8 @@
     "ai": "^3.4.14",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
-    "express": "^4.21.1"
+    "express": "^4.21.1",
+    "ua-parser-js": "^2.0.0-rc.1"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
