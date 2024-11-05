@@ -39,7 +39,7 @@ export const interact = async (req: Request, res: Response) => {
     const response = await fetch(targetUrl, {
       method: req.method,
       headers: headers,
-      body: JSON.stringify(req.body),
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {

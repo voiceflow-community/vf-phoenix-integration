@@ -17,4 +17,10 @@ router.route("/:projectId/state/user/:userId/interact").post(
   }
 );
 
+router.route("/public/:projectId/state/user/:userId/interact").post(
+  async (req: Request, res: Response): Promise<void> => {
+    await interact(req, res);
+  }
+);
+
 export default router;
