@@ -17,13 +17,16 @@ export const interact = async (req: Request, res: Response) => {
     let targetUrl = `https://${VOICEFLOW_DOMAIN}${req.originalUrl}`;
     let headers: any = {
       ...req.headers,
-      'Content-Type': 'application/json',
-      'host': new URL(`https://${VOICEFLOW_DOMAIN}`).host,
+      host: new URL(`https://${VOICEFLOW_DOMAIN}`).host,
+      origin: undefined,
     };
+
+    let sessionid = req.headers.sessionid || null
+    let versionid = req.headers.versionid || 'development'
 
     // Remove headers that shouldn't be forwarded
     delete headers['content-length'];
-    delete headers['origin'];
+    //delete headers['origin'];
 
     // Handle different modes (API vs Widget)
     if (MODE === 'api') {
@@ -41,7 +44,7 @@ export const interact = async (req: Request, res: Response) => {
         stopAll: true,
       }
     };
-
+    console.log(targetUrl);
     const response = await fetch(targetUrl, {
       method: req.method,
       headers: headers,
@@ -63,7 +66,8 @@ export const interact = async (req: Request, res: Response) => {
     });
 
     // Return response to widget
-    return res.json(voiceflowResponse);
+    res.set(response.headers)
+    return res.status(response.status).send(voiceflowResponse) //res.json(voiceflowResponse);
 
   } catch (error) {
     console.error("Error:", error);
