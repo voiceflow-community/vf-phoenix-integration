@@ -16,8 +16,8 @@ app.use(cors({
     ? process.env.ALLOWED_ORIGINS?.split(',') // Allow multiple origins in production
     : true, // Allow all origins in development
   credentials: true, // If you need to support credentials
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'versionid', 'userid', 'sessionid'],
 }));
 
 app.use(express.json());
