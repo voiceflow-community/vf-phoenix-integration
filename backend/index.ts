@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 import "dotenv/config";
 import express, { Express, Request, Response } from "express";
+import interactRouter from "./src/routes/interact.route";
 import traceRouter from "./src/routes/trace.route";
 import logRouter from "./src/routes/log.route";
 import feedbackRouter from "./src/routes/feedback.route";
@@ -28,6 +29,8 @@ app.get("/", (req: Request, res: Response) => {
 });
 
 app.use("/api/trace", traceRouter);
+
+app.use("/api/interact", interactRouter);
 
 app.use("/api/log", logRouter);
 
