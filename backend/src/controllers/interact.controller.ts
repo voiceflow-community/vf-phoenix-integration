@@ -1,5 +1,11 @@
 import { Request, Response } from "express";
 import parser from 'ua-parser-js';
+import { SpanStatusCode, trace } from "@opentelemetry/api";
+import {
+  MimeType,
+  OpenInferenceSpanKind,
+  SemanticConventions,
+} from "@arizeai/openinference-semantic-conventions";
 
 const VOICEFLOW_API_KEY = process.env.VOICEFLOW_API_KEY;
 const VOICEFLOW_DOMAIN = process.env.VOICEFLOW_DOMAIN || 'general-runtime.voiceflow.com';
@@ -7,8 +13,11 @@ const VOICEFLOW_VERSION_ID = process.env.VOICEFLOW_VERSION_ID || 'development';
 const MODE = process.env.MODE?.toLowerCase() || 'widget';
 
 export const interact = async (req: Request, res: Response) => {
-  try {
-    const { projectId, userId } = req.params;
+  const tracer = trace.getTracer("voiceflow-service");
+  // Start parent span for the entire chat operation
+
+    try {
+      const { projectId, userId } = req.params;
 
     let targetUrl = `https://${VOICEFLOW_DOMAIN}${req.originalUrl}`;
     let headers: any = {
@@ -39,7 +48,7 @@ export const interact = async (req: Request, res: Response) => {
         stopAll: true,
       }
     };
-    console.log(targetUrl);
+
     const response = await fetch(targetUrl, {
       method: req.method,
       headers: headers,
@@ -66,14 +75,33 @@ export const interact = async (req: Request, res: Response) => {
       const value = response.headers.get(header);
       if (value) res.set(header, value);
     });
-    return res.status(response.status).send(voiceflowResponse)
 
-  } catch (error) {
-    console.error("Error:", error);
-    return res.status(500).json({
-      error: (error as Error).message,
+    res.status(response.status).send(voiceflowResponse)
+
+    // Process trace information asynchronously after response is sent
+    setImmediate(() => {
+      try {
+        const traceInfo = extractTraceInfo(
+          voiceflowResponse.trace || [],
+          body,
+          req.headers
+        );
+
+        // Log or process the trace info as needed
+        console.log('Trace Info:', JSON.stringify(traceInfo, null, 2));
+      } catch (error) {
+        console.error('Error processing trace:', error);
+      }
     });
-  }
+
+    return;
+
+    } catch (error) {
+      console.error("Error:", error);
+      return res.status(500).json({
+        error: (error as Error).message,
+      });
+    }
 };
 
 function extractTraceInfo(trace: any[], requestBody: any, requestHeaders: any) {
@@ -99,6 +127,20 @@ function extractTraceInfo(trace: any[], requestBody: any, requestHeaders: any) {
     matchedIntent: null,
     confidence: null,
     model: null,
+    userQuery: null as string | null,
+    aiResponse: null as string | null,
+    aiParameters: {
+      system: null as string | null,
+      assistant: null as string | null,
+      output: null as string | null,
+      model: null as string | null,
+      temperature: null as number | null,
+      maxTokens: null as number | null,
+      queryTokens: null as number | null,
+      answerTokens: null as number | null,
+      tokens: null as number | null,
+      multiplier: null as number | null,
+    },
     tokenConsumption: {
       total: 0,
       query: 0,
@@ -126,13 +168,9 @@ function extractTraceInfo(trace: any[], requestBody: any, requestHeaders: any) {
     output.headers.os = os && os.name ? `${os.name} ${os.version}` : null;
   }
 
-  // Extract action information from request body
-  if (requestBody?.action) {
-    output.actionType = requestBody.action.type;
-    output.actionValue = requestBody.action.type.startsWith('path-') &&
-      requestBody.action.payload?.label ?
-      requestBody.action.payload.label :
-      requestBody.action.payload;
+  // Extract user query if action type is text
+  if (requestBody?.action?.type === 'text' && requestBody.action.payload) {
+    output.userQuery = requestBody.action.payload;
   }
 
   // Process trace items
@@ -140,9 +178,11 @@ function extractTraceInfo(trace: any[], requestBody: any, requestHeaders: any) {
     if (item.type === 'end') {
       output.endOfConvo = true;
     }
-    if (item.type === 'text' && item.payload?.message) {
-      output.textResponses.push(item.payload.message);
+
+    if (item.type === 'text' && item.payload?.ai === true && item.payload.message) {
+      output.aiResponse = item.payload.message;
     }
+
     if (item.type === 'debug') {
       processDebugItem(item, output);
     }
@@ -152,53 +192,19 @@ function extractTraceInfo(trace: any[], requestBody: any, requestHeaders: any) {
 }
 
 function processDebugItem(item: any, output: any) {
-  if (item.payload.type === 'api') {
-    output.apiCalls.total += 1;
-    if (item.payload.message === 'API call successfully triggered') {
-      output.apiCalls.successful += 1;
-    } else {
-      output.apiCalls.failed += 1;
-    }
-  }
-
-  if (item.payload.type === 'intent') {
-    const intentMatch = item.payload.message.match(
-      /matched intent \*\*(.*?)\*\* - confidence interval _(.*?)%_/
-    );
-    if (intentMatch) {
-      output.matchedIntent = intentMatch[1];
-      output.confidence = parseFloat(intentMatch[2]);
-    }
-  }
-
-  if (item.payload.message.includes('__AI Set__') ||
-      item.payload.message.includes('__AI Response__')) {
-    processAIMessage(item, output);
-  }
-}
-
-function processAIMessage(item: any, output: any) {
-  const modelMatch = item.payload.message.match(/Model: `(.*?)`/);
-  const postMultiplierMatch = item.payload.message.match(
-    /Post-Multiplier Token Consumption: `{(.*?)}`/
-  );
-
-  if (modelMatch) {
-    output.model = modelMatch[1];
-  }
-
-  if (postMultiplierMatch) {
-    try {
-      const formattedString = postMultiplierMatch[1]
-        .replace(/`/g, '"')
-        .replace(/(\w+):/g, '"$1":');
-      const consumptionJson = JSON.parse(`{${formattedString}}`);
-
-      output.tokenConsumption.total += consumptionJson.total || 0;
-      output.tokenConsumption.query += consumptionJson.query || 0;
-      output.tokenConsumption.answer += consumptionJson.answer || 0;
-    } catch (error) {
-      console.error('Error parsing token consumption data:', error);
-    }
+  if (item.payload.type === 'ai-response-parameters-model' && item.paths?.[0]?.event?.payload) {
+    const params = item.paths[0].event.payload;
+    output.aiParameters = {
+      system: params.system || null,
+      assistant: params.assistant || null,
+      output: params.output || null,
+      model: params.model || null,
+      temperature: params.temperature || null,
+      maxTokens: params.maxTokens || null,
+      queryTokens: params.queryTokens || null,
+      answerTokens: params.answerTokens || null,
+      tokens: params.tokens || null,
+      multiplier: params.multiplier || null,
+    };
   }
 }

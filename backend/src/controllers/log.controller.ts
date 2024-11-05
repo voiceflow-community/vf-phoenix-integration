@@ -4,7 +4,6 @@ import {
   MimeType,
   OpenInferenceSpanKind,
   SemanticConventions,
-  SEMRESATTRS_PROJECT_NAME,
 } from "@arizeai/openinference-semantic-conventions";
 
 type Message = {
@@ -16,11 +15,7 @@ export const logTrace = async (req: Request, res: Response) => {
   const tracer = trace.getTracer("voiceflow-service");
   tracer.startActiveSpan("chat", async (span) => {
     try {
-      const { messages, metadata = {}, user = "unknown", tags = [], modelName = "Voiceflow", projectName = null } = req.body;
-
-      /* if (projectName) {
-        // How to update SEMRESATTRS_PROJECT_NAME
-      } */
+      const { messages, metadata = {}, user = "unknown", tags = [], modelName = "Voiceflow" } = req.body;
 
       if (!messages || messages.length === 0) {
         return res.status(400).json({
