@@ -23,18 +23,18 @@ export const interact = async (req: Request, res: Response) => {
         origin: undefined,
       };
 
-      let sessionid = req.headers.sessionid || null
-      let versionid = req.headers.versionid || 'development'
+      //let sessionid = req.headers.sessionid || null
+      //let versionid = req.headers.versionid || 'development'
 
       // Remove headers that shouldn't be forwarded
       delete headers['content-length'];
 
       // Handle different modes (API vs Widget)
-      if (MODE === 'api') {
+      /* if (MODE === 'api') {
         const userID = req.headers.userid || 'user';
         headers.authorization = VOICEFLOW_API_KEY;
         targetUrl = `https://${VOICEFLOW_DOMAIN}/state/user/${userID}/interact`;
-      }
+      } */
 
       const body = {
         ...req.body,
@@ -53,12 +53,12 @@ export const interact = async (req: Request, res: Response) => {
       const voiceflowResponse = await response.json();
 
       // Log interaction details if needed
-      console.log(JSON.stringify({
+      /* console.log(JSON.stringify({
         projectId,
         userId,
         request: body,
         response: voiceflowResponse,
-      }, null, 2));
+      }, null, 2)); */
 
       // Return response to widget
       const safeHeaders = ['content-type', 'cache-control', 'expires'];
@@ -129,7 +129,6 @@ export const interact = async (req: Request, res: Response) => {
           };
         }
 
-        // const assistantReply = voiceflowResponse.trace.find((t: any) => t.type === 'text' && t.payload.ai === true)?.payload.message;
         const assistantReply = extractTextContent(voiceflowResponse.trace);
         let hSession = req.headers.sessionid || null;
         let hVersion = req.headers.versionid || null;
@@ -152,10 +151,6 @@ export const interact = async (req: Request, res: Response) => {
           [SemanticConventions.USER_ID]: userId,
         });
 
-        const hasEndTrace = voiceflowResponse.trace.some((t: any) => t.type === 'end');
-        const tags = hasEndTrace ? ['end'] : [];
-
-
         // Filter LLM traces
         const llmTraces = voiceflowResponse.trace.filter((t: any) =>
           t.type === 'debug' &&
@@ -163,10 +158,11 @@ export const interact = async (req: Request, res: Response) => {
           t.paths?.[0]?.event?.payload
         );
 
+        const hasEndTrace = voiceflowResponse.trace.some((t: any) => t.type === 'end');
+        const tag = hasEndTrace ? ['end'] : [];
+
         llmTraces.forEach((t: { paths: [{ event: { payload: any, type: string } }] }) => {
           const params = t.paths[0].event.payload;
-
-          tags.push(t.paths[0].event.type);
 
           tracer.startActiveSpan("llm_call", async (llmSpan) => {
             llmSpan.setAttributes({
@@ -179,13 +175,16 @@ export const interact = async (req: Request, res: Response) => {
               [SemanticConventions.LLM_TOKEN_COUNT_PROMPT]: params.queryTokens,
               [SemanticConventions.LLM_TOKEN_COUNT_COMPLETION]: params.answerTokens,
               [SemanticConventions.LLM_TOKEN_COUNT_TOTAL]: params.tokens,
-              [SemanticConventions.TAG_TAGS]: tags,
+              [SemanticConventions.TAG_TAGS]: [t.paths[0].event.type],
             });
             llmSpan.setStatus({ code: SpanStatusCode.OK });
             llmSpan.end();
           });
         });
 
+        parentSpan.setAttributes({
+          [SemanticConventions.TAG_TAGS]: tag,
+        });
         parentSpan.setStatus({ code: SpanStatusCode.OK });
         parentSpan.end();
       });
