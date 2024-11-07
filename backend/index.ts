@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 import "dotenv/config";
-import express, { Express, Response } from "express";
+import express, { Express, Request, Response } from "express";
 import traceRouter from "./src/routes/trace.route";
 import logRouter from "./src/routes/log.route";
 import feedbackRouter from "./src/routes/feedback.route";
@@ -39,12 +39,12 @@ app.use(cors({
 app.use(express.json());
 app.use(express.text());
 
-app.get("/", (res: Response) => {
-  res.send("Voiceflow | Arize Phoenix Service");
+app.get("/", (req: Request, res: Response) => {
+  res.status(200).send("Voiceflow | Arize Phoenix Service");
 });
 
-app.get("/health", (res: Response) => {
-  res.send({ status: "OK" });
+app.get("/health", (req: Request, res: Response) => {
+  res.status(200).send({ status: "OK" });
 });
 
 app.use("/", publicRouter);
