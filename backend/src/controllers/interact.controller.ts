@@ -32,11 +32,6 @@ export const interact = async (req: Request, res: Response) => {
         }
       };
       const startTime = new Date().toISOString();
-      const response = await fetch(targetUrl, {
-        method: req.method,
-        headers: headers,
-        body: JSON.stringify(body),
-      });
 
       const tracer = trace.getTracer("voiceflow-service");
 
@@ -44,6 +39,12 @@ export const interact = async (req: Request, res: Response) => {
         parentSpan.setAttributes({
           [SemanticConventions.OPENINFERENCE_SPAN_KIND]: OpenInferenceSpanKind.CHAIN,
         });
+
+      const response = await fetch(targetUrl, {
+        method: req.method,
+        headers: headers,
+        body: JSON.stringify(body),
+      });
 
 
       // Get response from Voiceflow
