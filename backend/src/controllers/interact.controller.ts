@@ -157,7 +157,7 @@ export const interact = async (req: Request, res: Response) => {
           const tag = hasEndTrace ? ['end'] : [];
 
           llmTraces.forEach((t: { paths: [{ event: { payload: any, type: string } }] }) => {
-            const params = t.paths[0].event.payload;
+            let params = t.paths[0].event.payload;
 
             tracer.startActiveSpan("llm_call", async (llmSpan) => {
               llmSpan.setAttributes({
@@ -170,6 +170,7 @@ export const interact = async (req: Request, res: Response) => {
                 [SemanticConventions.LLM_TOKEN_COUNT_PROMPT]: params.queryTokens,
                 [SemanticConventions.LLM_TOKEN_COUNT_COMPLETION]: params.answerTokens,
                 [SemanticConventions.LLM_TOKEN_COUNT_TOTAL]: params.tokens,
+                [SemanticConventions.LLM_INVOCATION_PARAMETERS]: JSON.stringify({ 'model_name': params.model, 'temperature': params.temperature, 'max_tokens': params.maxTokens, 'multiplier': params.multiplier }),
                 [SemanticConventions.TAG_TAGS]: [t.paths[0].event.type],
               });
               llmSpan.setStatus({ code: SpanStatusCode.OK });
