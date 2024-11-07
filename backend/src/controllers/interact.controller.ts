@@ -203,7 +203,9 @@ export const interact = async (req: Request, res: Response) => {
             [SemanticConventions.TAG_TAGS]: tag,
           });
 
-          parentSpan.setAttribute("duration", 15340347.975);
+          parentSpan.setAttributes({
+            duration: 8000
+          });
           parentSpan.setStatus({ code: SpanStatusCode.OK });
         } catch (error) {
           parentSpan.setStatus({
