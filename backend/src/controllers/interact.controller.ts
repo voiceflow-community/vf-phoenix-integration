@@ -160,37 +160,62 @@ export const interact = async (req: Request, res: Response) => {
           // Filter LLM traces
           const llmTraces = traces.filter((t: any) =>
             t.type === 'debug' &&
-            t.paths?.[0]?.event?.type?.startsWith('ai-') &&
+            (t.paths?.[0]?.event?.type?.startsWith('ai-') || t.type === 'knowledgeBase') &&
             t.paths?.[0]?.event?.payload
           );
 
           const hasEndTrace = traces.some((t: any) => t.type === 'end');
           const tag = hasEndTrace ? ['end'] : [];
 
-          llmTraces.forEach((llmTrace: { time: number, paths: [{ event: { payload: any, type: string } }] }, index: number) => {
+          llmTraces.forEach((llmTrace: { type: string, time: number, payload: any, paths: [{ event: { payload: any, type: string } }] }) => {
             const fullTraceIndex = traces.findIndex((t: any) => t === llmTrace);
             const currentTraceTime = llmTrace.time;
             // Get previous trace time from full traces array
             const previousTraceTime = fullTraceIndex > 0 ? traces[fullTraceIndex - 1].time : startTime;
+            if (llmTrace.type === 'knowledgeBase') {
+              tracer.startActiveSpan("knowledgeBaseRetrieval", async (knowledgeBaseSpan) => {
+                knowledgeBaseSpan.setAttributes({
+                  [SemanticConventions.OPENINFERENCE_SPAN_KIND]: OpenInferenceSpanKind.RETRIEVER,
+                  [SemanticConventions.INPUT_VALUE]: JSON.stringify({ messages: llmTrace.payload.query?.messages }),
+                  [SemanticConventions.INPUT_MIME_TYPE]: MimeType.JSON,
+                  [SemanticConventions.OUTPUT_VALUE]: llmTrace.payload.query?.output,
+                });
 
-            let params = llmTrace.paths[0].event.payload;
-            tracer.startActiveSpan("llm_call", { startTime: previousTraceTime },async (llmSpan) => {
-              llmSpan.setAttributes({
-                [SemanticConventions.OPENINFERENCE_SPAN_KIND]: OpenInferenceSpanKind.LLM,
-                [SemanticConventions.INPUT_VALUE]: params.assistant,
-                [SemanticConventions.INPUT_MIME_TYPE]: MimeType.TEXT,
-                [SemanticConventions.OUTPUT_VALUE]: params.output,
-                [SemanticConventions.OUTPUT_MIME_TYPE]: MimeType.TEXT,
-                [SemanticConventions.LLM_MODEL_NAME]: params.model,
-                [SemanticConventions.LLM_TOKEN_COUNT_PROMPT]: params.queryTokens,
-                [SemanticConventions.LLM_TOKEN_COUNT_COMPLETION]: params.answerTokens,
-                [SemanticConventions.LLM_TOKEN_COUNT_TOTAL]: params.tokens,
-                [SemanticConventions.LLM_INVOCATION_PARAMETERS]: JSON.stringify({ 'model_name': params.model, 'temperature': params.temperature, 'max_tokens': params.maxTokens, 'multiplier': params.multiplier }),
-                [SemanticConventions.TAG_TAGS]: [llmTrace.paths[0].event.type],
+                if (llmTrace.payload.chunks) {
+                  for (let i = 0; i < llmTrace.payload.chunks.length; i++) {
+                    const chunk = llmTrace.payload.chunks[i];
+                    knowledgeBaseSpan.setAttributes({
+                      [`${SemanticConventions.RETRIEVAL_DOCUMENTS}.${i}.${SemanticConventions.DOCUMENT_CONTENT}`]: chunk.documentData?.name,
+                      [`${SemanticConventions.RETRIEVAL_DOCUMENTS}.${i}.${SemanticConventions.DOCUMENT_ID}`]: chunk.documentID,
+                      [`${SemanticConventions.RETRIEVAL_DOCUMENTS}.${i}.${SemanticConventions.DOCUMENT_SCORE}`]: chunk.score,
+                      [`${SemanticConventions.RETRIEVAL_DOCUMENTS}.${i}.${SemanticConventions.DOCUMENT_METADATA}`]: JSON.stringify(chunk.documentData),
+                    });
+                  }
+                }
+                knowledgeBaseSpan.setStatus({ code: SpanStatusCode.OK });
+                knowledgeBaseSpan.end(currentTraceTime);
               });
-              llmSpan.setStatus({ code: SpanStatusCode.OK });
-              llmSpan.end(currentTraceTime);
-            });
+            } else {
+              let params = llmTrace.paths[0].event.payload;
+              tracer.startActiveSpan("llm_call", { startTime: previousTraceTime },async (llmSpan) => {
+                llmSpan.setAttributes({
+                  [SemanticConventions.OPENINFERENCE_SPAN_KIND]: OpenInferenceSpanKind.LLM,
+                  [SemanticConventions.INPUT_VALUE]: params.assistant,
+                  [SemanticConventions.INPUT_MIME_TYPE]: MimeType.TEXT,
+                  [SemanticConventions.OUTPUT_VALUE]: params.output,
+                  [SemanticConventions.OUTPUT_MIME_TYPE]: MimeType.TEXT,
+                  [SemanticConventions.LLM_MODEL_NAME]: params.model,
+                  [SemanticConventions.LLM_TOKEN_COUNT_PROMPT]: params.queryTokens,
+                  [SemanticConventions.LLM_TOKEN_COUNT_COMPLETION]: params.answerTokens,
+                  [SemanticConventions.LLM_TOKEN_COUNT_TOTAL]: params.tokens,
+                  [SemanticConventions.LLM_INVOCATION_PARAMETERS]: JSON.stringify({ 'model_name': params.model, 'temperature': params.temperature, 'max_tokens': params.maxTokens, 'multiplier': params.multiplier }),
+                  [SemanticConventions.TAG_TAGS]: [llmTrace.paths[0].event.type],
+                });
+                llmSpan.setStatus({ code: SpanStatusCode.OK });
+                llmSpan.end(currentTraceTime);
+              });
+            }
+
           });
           parentSpan.setAttributes({
             [SemanticConventions.TAG_TAGS]: tag,
