@@ -1,25 +1,75 @@
 # Overview
 
-This example shows how to use [@arizeai/openinference](https://github.com/Arize-ai/openinference/tree/main) to instrument a Voiceflow agent.
+This example shows how to use [@arizeai/openinference](https://github.com/Arize-ai/openinference/tree/main) to instrument a [Voiceflow](https://voiceflow.com/) agent and save the logs to [Arize Phoenix](https://github.com/Arize-ai/phoenix) by providing a backend/proxy service.
 
-Our example will export spans data on [arize-phoenix](https://github.com/Arize-ai/phoenix) and you will also be able to add feedback to your spans via a Voiceflow chat widget extension.
+# Getting Started with Docker-Compose
 
-## Getting Started With the backend local development
+## Environment Variables
 
-First, startup the backend as described in the [backend README](./backend/README.md).
-Second, run the Phoenix instance
+The service requires several environment variables to be set in the .env file,
+you can use the .env.template file as a template.
 
-## Getting Started with Docker-Compose
+- `PHOENIX_API_ENDPOINT` - Phoenix API endpoint (default: http://localhost:6006)
+- `PHOENIX_PORT` - Phoenix port (default: 6006)
+- `PHOENIX_PROJECT_NAME` - The Phoenix project name to store traces
+- `PHOENIX_API_KEY` - Your Phoenix API key
+- `PHOENIX_ENABLE_AUTH` - Whether to enable authentication for Phoenix (default: True)
+- `PHOENIX_SECRET` - Phoenix secret (change this to a random string)
+- `PHOENIX_CSRF_TRUSTED_ORIGINS` - Allowed origins for Phoenix traces (default: http://localhost:5252)
+- `COLLECTOR_ENDPOINT` - http://phoenix:6006/v1/traces
+- `VOICEFLOW_DOMAIN` - Voiceflow domain (default: general-runtime.voiceflow.com)
+- `ALLOWED_ORIGINS` - Allowed origins for Phoenix traces (default: http://localhost:5252)
+- `PORT` - Backend server port (default: 5252)
+- `NODE_ENV` - Node environment (default: development - allows all origins)
 
-Ensure that Docker is installed and running. Run the command `docker compose up` to spin up services for the backend and Phoenix. Once those services are running, open [http://localhost:6006](http://localhost:6006) to view spans and feedback in Phoenix. When you're finished, run `docker compose down` to spin down the services.
+Ensure that Docker is installed and running. Run the command `docker compose up` to spin up the backend service and the Phoenix instance. Once those services are running, open [http://localhost:6006](http://localhost:6006) to view spans and feedback in Phoenix and use [http://localhost:5252](http://localhost:5252) endpoints to send traces to Phoenix. When you're finished, run `docker compose down` to spin down the services.
+
+### Proxy Endpoints
+
+Replace `https://general-runtime.voiceflow.com` with your backend URL to auto log all Voiceflow LLM interactions to Phoenix.
+
+For example, in the following Chat Widget snippet code example, replace `[YOUR_BACKEND_URL]` with your backend URL.
+
+```javascript
+(function(d, t) {
+      var v = d.createElement(t), s = d.getElementsByTagName(t)[0];
+      v.onload = function() {
+        window.voiceflow.chat.load({
+          verify: { projectID: '[YOUR_PROJECT_ID]' },
+          url: '[YOUR_BACKEND_URL]',
+          versionID: 'production'
+        });
+      }
+      v.src = "https://cdn.voiceflow.com/widget/bundle.mjs"; v.type = "text/javascript"; s.parentNode.insertBefore(v, s);
+  })(document, 'script');
+```
+
+For Voiceflow, replace `[YOUR_BACKEND_URL]` with your backend URL in your requests to the Dialog Management API.
+
+```bash
+curl --request POST \
+  --url [YOUR_BACKEND_URL]/state/user/demo/interact \
+  --header 'Authorization: [YOUR_VOICEFLOW_API_KEY]' \
+  --header 'content-type: application/json' \
+  --header 'versionID: production' \
+  --data '{
+          "action": {
+            "type": "text",
+            "payload": "What is Voiceflow?"
+          },
+          "config": {
+            "excludeTypes": ["flow", "block"]
+          }
+ }'
+```
 
 ## Available API Endpoints
 
-The service exposes the following endpoints:
+The service also exposes the following endpoints:
 
-### Chat Endpoints
-- `POST /public/:projectId/state/user/:userId/interact` - Main endpoint for Voiceflow chat interactions
-- `POST /:projectId/state/user/:userId/interact` - Alternative endpoint for Voiceflow chat interactions
+### Tracing Endpoints
+- `POST /api/trace` - Log detailed trace information for chat interactions
+- `POST /api/log` - Simplified logging endpoint for basic chat traces
 
 ### Feedback Endpoints
 - `POST /api/feedback` - Submit detailed feedback for a chat interaction
@@ -28,27 +78,13 @@ The service exposes the following endpoints:
     - `score`: Either '1' (👍) or '-1' (👎)
     - `spanId`: The ID of the span to provide feedback for
 
-### Tracing Endpoints
-- `POST /api/trace` - Log detailed trace information for chat interactions
-- `POST /api/log` - Simplified logging endpoint for basic chat traces
-
 ### Health Check
-- `GET /` - Basic health check endpoint that returns "Voiceflow | Arize Phoenix Service"
+- `GET /health` - Basic health check endpoint that returns `{ "status": "OK"}` if the service is running
 
-## Environment Variables
-
-The service requires several environment variables to be set:
-
-- `PORT` - Server port (default: 5252)
-- `PHOENIX_API_ENDPOINT` - Phoenix API endpoint (default: http://localhost:6006)
-- `VOICEFLOW_API_KEY` - Your Voiceflow API key
-- `VOICEFLOW_DOMAIN` - Voiceflow domain (default: general-runtime.voiceflow.com)
-- `VOICEFLOW_VERSION_ID` - Voiceflow version ID (default: development)
-- `PHOENIX_API_KEY` - Your Phoenix API key
-- `PHOENIX_PROJECT_NAME` - Project name for Phoenix traces
 
 ## Learn More
 
 To learn more about Arize Phoenix, take a look at the following resources:
 
-You can check out [the Phoenix GitHub repository](https://github.com/Arize-ai/phoenix) - your feedback and contributions are welcome!
+You can check out [the Phoenix GitHub repository](https://github.com/Arize-ai/phoenix)
+as well as some [additional documentation](https://docs.arize.com/phoenix/evaluation/evals) on how to run evals.

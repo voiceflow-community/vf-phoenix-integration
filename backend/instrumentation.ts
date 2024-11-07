@@ -37,5 +37,4 @@ registerInstrumentations({
 });
 
 provider.register();
-
 console.log("👀 OpenInference initialized");

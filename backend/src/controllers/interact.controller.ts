@@ -24,18 +24,8 @@ export const interact = async (req: Request, res: Response) => {
         origin: undefined,
       };
 
-      //let sessionid = req.headers.sessionid || null
-      //let versionid = req.headers.versionid || 'development'
-
       // Remove headers that shouldn't be forwarded
       delete headers['content-length'];
-
-      // Handle different modes (API vs Widget)
-      /* if (MODE === 'api') {
-        const userID = req.headers.userid || 'user';
-        headers.authorization = VOICEFLOW_API_KEY;
-        targetUrl = `https://${VOICEFLOW_DOMAIN}/state/user/${userID}/interact`;
-      } */
 
       const body = {
         ...req.body,
@@ -139,7 +129,7 @@ export const interact = async (req: Request, res: Response) => {
           const assistantReply = extractTextContent(traces);
 
           let hSession = req.headers.sessionid || null;
-          let hVersion = req.headers.versionid || null;
+          let hVersion = req.headers.versionid || 'development';
           let hOrigin = req.headers.origin || null;
           let hReferer = req.headers.referer || null;
           let hIP = req.headers['x-forwarded-for'] || '127.0.0.1';

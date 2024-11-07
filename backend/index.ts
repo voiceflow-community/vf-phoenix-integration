@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 import "dotenv/config";
-import express, { Express, Request, Response } from "express";
+import express, { Express, Response } from "express";
 import traceRouter from "./src/routes/trace.route";
 import logRouter from "./src/routes/log.route";
 import feedbackRouter from "./src/routes/feedback.route";
@@ -11,11 +11,14 @@ import cors from "cors";
 const app: Express = express();
 const port = parseInt(process.env.PORT || "5252");
 
+const NODE_ENV = process.env.NODE_ENV || 'development';
+
+// Set up cors
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production'
+  origin: NODE_ENV === 'production'
     ? process.env.ALLOWED_ORIGINS?.split(',') // Allow multiple origins in production
     : '*', // Allow all origins in development
-  credentials: true, // If you need to support credentials
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: [
     'Content-Type',
@@ -36,8 +39,12 @@ app.use(cors({
 app.use(express.json());
 app.use(express.text());
 
-app.get("/", (req: Request, res: Response) => {
-  res.send("Voiceflow | Arize Phoenix Service");
+app.get("/", (res: Response) => {
+  res.status(200).send("Voiceflow | Arize Phoenix Service");
+});
+
+app.get("/health", (res: Response) => {
+  res.status(200).send({ status: "OK" });
 });
 
 app.use("/", publicRouter);
