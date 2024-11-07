@@ -40,7 +40,7 @@ export const interact = async (req: Request, res: Response) => {
         ...req.body,
         config: {
           ...req.body.config, // Preserve existing config
-          excludeTypes: ['speak', 'flow', 'block'], // Override only excludeTypes
+          excludeTypes: ['flow', 'block'], // Override only excludeTypes
         }
       };
 
@@ -95,14 +95,56 @@ export const interact = async (req: Request, res: Response) => {
         return res.status(response.status).send(voiceflowResponse)
       }
 
-      const traceInfo = extractTraceInfo(
+      tracer.startActiveSpan("chat", async (parentSpan) => {
+        parentSpan.setAttributes({
+          [SemanticConventions.OPENINFERENCE_SPAN_KIND]: OpenInferenceSpanKind.CHAIN,
+          [SemanticConventions.INPUT_VALUE]: JSON.stringify({ messages: [
+            {
+              "role": "user",
+              "content": req.body.action.text || ""
+            }
+          ]}),
+          [SemanticConventions.INPUT_MIME_TYPE]: MimeType.JSON,
+        });
+        const llmTraces = voiceflowResponse.trace.filter((t: any) =>
+          t.type === 'debug' &&
+          t.payload?.type === 'ai-set-parameters-model' &&
+          t.paths?.[0]?.event?.payload
+        );
+
+        llmTraces.forEach((t: { paths: [{ event: { payload: any } }] }) => {
+          const params = t.paths[0].event.payload;
+
+          tracer.startActiveSpan("llm_call", async (llmSpan) => {
+            llmSpan.setAttributes({
+              [SemanticConventions.OPENINFERENCE_SPAN_KIND]: OpenInferenceSpanKind.LLM,
+              //[SemanticConventions.INPUT_VALUE]: JSON.stringify({ messages }),
+              //[SemanticConventions.INPUT_MIME_TYPE]: MimeType.JSON,
+              [SemanticConventions.INPUT_VALUE]: params.assistant,
+              [SemanticConventions.INPUT_MIME_TYPE]: MimeType.TEXT,
+              [SemanticConventions.OUTPUT_VALUE]: params.output,
+              [SemanticConventions.OUTPUT_MIME_TYPE]: MimeType.TEXT,
+              [SemanticConventions.LLM_MODEL_NAME]: params.model,
+              [SemanticConventions.LLM_TOKEN_COUNT_PROMPT]: params.queryTokens,
+              [SemanticConventions.LLM_TOKEN_COUNT_COMPLETION]: params.answerTokens,
+              [SemanticConventions.LLM_TOKEN_COUNT_TOTAL]: params.tokens,
+
+            });
+            llmSpan.setStatus({ code: SpanStatusCode.OK });
+            llmSpan.end();
+          });
+        });
+      });
+
+
+      /* const traceInfo = extractTraceInfo(
         tracer,
         voiceflowResponse.trace || [],
         body,
         req.headers,
         userId
-      );
-
+      ); */
+      return res.status(response.status).send(voiceflowResponse)
 
     } catch (error) {
       console.error("Error:", error);
