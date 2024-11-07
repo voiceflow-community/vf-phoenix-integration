@@ -42,6 +42,8 @@ app.get("/", (req: Request, res: Response) => {
 
 app.use("/public", publicRouter);
 
+app.use("/state", publicRouter);
+
 app.use("/api/trace", traceRouter);
 
 app.use("/api/log", logRouter);
