@@ -32,13 +32,8 @@ export const interact = async (req: Request, res: Response) => {
         }
       };
 
-      const tracer = trace.getTracer("voiceflow-service");
 
-      tracer.startActiveSpan("chat", { startTime: Date.now() - (30 * 1000) }, async (parentSpan) => {
-        parentSpan.setAttributes({
-          [SemanticConventions.OPENINFERENCE_SPAN_KIND]: OpenInferenceSpanKind.CHAIN,
-        });
-
+      const startTime = Date.now();
       const response = await fetch(targetUrl, {
         method: req.method,
         headers: headers,
@@ -83,7 +78,8 @@ export const interact = async (req: Request, res: Response) => {
         res.status(response.status).send(voiceflowResponse)
       }
 
-
+      const tracer = trace.getTracer("voiceflow-service");
+      tracer.startActiveSpan("chat", { startTime: startTime }, async (parentSpan) => {
 
       if (!response.ok) {
           parentSpan.setAttributes({
@@ -197,8 +193,6 @@ export const interact = async (req: Request, res: Response) => {
           parentSpan.setAttributes({
             [SemanticConventions.TAG_TAGS]: tag,
           });
-
-          parentSpan.setAttribute('custom.duration_seconds', 8);
           parentSpan.setStatus({ code: SpanStatusCode.OK });
         } catch (error) {
           parentSpan.setStatus({
@@ -206,7 +200,7 @@ export const interact = async (req: Request, res: Response) => {
             message: (error as Error).message,
           });
         } finally {
-          parentSpan.end(Date.now() + (50 * 1000));
+          parentSpan.end();
         }
       })
     } catch (error) {
