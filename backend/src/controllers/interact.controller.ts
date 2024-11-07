@@ -43,12 +43,12 @@ export const interact = async (req: Request, res: Response) => {
       let traces = [];
 
       // Log interaction details if needed
-      console.log(JSON.stringify({
+      /* console.log(JSON.stringify({
         projectId,
         userId,
         request: body,
         response: voiceflowResponse,
-      }, null, 2));
+      }, null, 2)); */
 
       // Filter out debug traces before sending response
       // Support both array (DM API) and object (Chat Widget public endpoint) responses
