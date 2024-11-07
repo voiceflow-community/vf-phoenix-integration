@@ -31,7 +31,6 @@ export const interact = async (req: Request, res: Response) => {
           excludeTypes: ['flow', 'block'], // Override only excludeTypes
         }
       };
-      const startTime = new Date().toISOString();
 
       const tracer = trace.getTracer("voiceflow-service");
 
@@ -203,6 +202,8 @@ export const interact = async (req: Request, res: Response) => {
           parentSpan.setAttributes({
             [SemanticConventions.TAG_TAGS]: tag,
           });
+
+          parentSpan.setAttribute("duration", 15340347.975);
           parentSpan.setStatus({ code: SpanStatusCode.OK });
         } catch (error) {
           parentSpan.setStatus({
