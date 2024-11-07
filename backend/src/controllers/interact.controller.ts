@@ -38,6 +38,22 @@ export const interact = async (req: Request, res: Response) => {
         body: JSON.stringify(body),
       });
 
+      const tracer = trace.getTracer("voiceflow-service");
+
+      tracer.startActiveSpan("chat", async (parentSpan) => {
+        parentSpan.setAttributes({
+          [SemanticConventions.OPENINFERENCE_SPAN_KIND]: OpenInferenceSpanKind.CHAIN,
+          [SemanticConventions.INPUT_VALUE]: JSON.stringify({ messages: [
+            {
+              "role": "user",
+              "content": req.body.action.text || ""
+            }
+          ]}),
+          [SemanticConventions.INPUT_MIME_TYPE]: MimeType.JSON,
+        });
+
+
+      // Get response from Voiceflow
       let voiceflowResponse = await response.json();
       let traces = [];
 
@@ -74,10 +90,10 @@ export const interact = async (req: Request, res: Response) => {
         res.status(response.status).send(voiceflowResponse)
       }
 
-      const tracer = trace.getTracer("voiceflow-service");
+
 
       if (!response.ok) {
-        tracer.startActiveSpan("chat", async (parentSpan) => {
+        //tracer.startActiveSpan("chat", async (parentSpan) => {
           parentSpan.setAttributes({
             [SemanticConventions.OPENINFERENCE_SPAN_KIND]: OpenInferenceSpanKind.CHAIN,
             [SemanticConventions.INPUT_VALUE]: JSON.stringify({ messages: [
@@ -93,13 +109,13 @@ export const interact = async (req: Request, res: Response) => {
             message: `Voiceflow API request failed with status ${response.status}`,
           });
           parentSpan.end();
-        });
+        //});
         return
       }
 
-      tracer.startActiveSpan("chat", async (parentSpan) => {
+      //tracer.startActiveSpan("chat", async (parentSpan) => {
         try {
-          parentSpan.setAttribute("start_time", startTime );
+          //parentSpan.setAttribute("start_time", startTime );
           parentSpan.setAttributes({
             [SemanticConventions.OPENINFERENCE_SPAN_KIND]: OpenInferenceSpanKind.CHAIN,
             [SemanticConventions.INPUT_VALUE]: JSON.stringify({ messages: [
@@ -189,7 +205,7 @@ export const interact = async (req: Request, res: Response) => {
               llmSpan.end();
             });
           });
-          parentSpan.setAttribute("end_time", new Date().toISOString());
+          //parentSpan.setAttribute("end_time", new Date().toISOString());
           parentSpan.setAttributes({
             [SemanticConventions.TAG_TAGS]: tag,
           });
