@@ -77,6 +77,9 @@ export const interact = async (req: Request, res: Response) => {
 
       const tracer = trace.getTracer("voiceflow-service");
 
+      // Support both array (DM API) and object (Chat Widget public endpoint) responses
+      const traces = Array.isArray(voiceflowResponse) ? voiceflowResponse : voiceflowResponse.trace || [];
+
       if (!response.ok) {
         tracer.startActiveSpan("chat", async (parentSpan) => {
           parentSpan.setAttributes({
@@ -133,7 +136,7 @@ export const interact = async (req: Request, res: Response) => {
             };
           }
 
-          const assistantReply = extractTextContent(voiceflowResponse.trace);
+          const assistantReply = extractTextContent(traces);
 
           let hSession = req.headers.sessionid || null;
           let hVersion = req.headers.versionid || null;
@@ -157,13 +160,13 @@ export const interact = async (req: Request, res: Response) => {
           });
 
           // Filter LLM traces
-          const llmTraces = voiceflowResponse.trace.filter((t: any) =>
+          const llmTraces = traces.filter((t: any) =>
             t.type === 'debug' &&
             t.paths?.[0]?.event?.type?.startsWith('ai-') &&
             t.paths?.[0]?.event?.payload
           );
 
-          const hasEndTrace = voiceflowResponse.trace.some((t: any) => t.type === 'end');
+          const hasEndTrace = traces.some((t: any) => t.type === 'end');
           const tag = hasEndTrace ? ['end'] : [];
 
           llmTraces.forEach((t: { paths: [{ event: { payload: any, type: string } }] }) => {
