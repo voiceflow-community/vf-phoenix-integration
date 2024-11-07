@@ -38,7 +38,9 @@ export const interact = async (req: Request, res: Response) => {
         body: JSON.stringify(body),
       });
 
-      const voiceflowResponse = await response.json();
+      let voiceflowResponse = await response.json();
+      let traces = [];
+
 
       // Log interaction details if needed
       /* console.log(JSON.stringify({
@@ -48,6 +50,16 @@ export const interact = async (req: Request, res: Response) => {
         response: voiceflowResponse,
       }, null, 2)); */
 
+      // Filter out debug traces before sending response
+      // Support both array (DM API) and object (Chat Widget public endpoint) responses
+      if (Array.isArray(voiceflowResponse)) {
+        traces = voiceflowResponse;
+        voiceflowResponse = voiceflowResponse.filter(trace => trace.type !== 'debug');
+      } else if (voiceflowResponse.trace) {
+        traces = voiceflowResponse.trace;
+        voiceflowResponse.trace = voiceflowResponse.trace.filter((trace: any) => trace.type !== 'debug');
+      }
+
       // Return response to widget
       const safeHeaders = ['content-type', 'cache-control', 'expires'];
       safeHeaders.forEach(header => {
@@ -55,7 +67,7 @@ export const interact = async (req: Request, res: Response) => {
         if (value) res.set(header, value);
       });
 
-      // If the request is a launch, return the response immediately
+      // If the request is a launch, return the response immediately and don't trace
       if (req.body?.action?.type === 'launch' || req.body?.request?.type === 'launch') {
         return res.status(response.status).send(voiceflowResponse)
       } else {
@@ -63,9 +75,6 @@ export const interact = async (req: Request, res: Response) => {
       }
 
       const tracer = trace.getTracer("voiceflow-service");
-
-      // Support both array (DM API) and object (Chat Widget public endpoint) responses
-      const traces = Array.isArray(voiceflowResponse) ? voiceflowResponse : voiceflowResponse.trace || [];
 
       if (!response.ok) {
         tracer.startActiveSpan("chat", async (parentSpan) => {
