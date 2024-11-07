@@ -159,9 +159,7 @@ export const interact = async (req: Request, res: Response) => {
 
           // Filter LLM traces
           const llmTraces = traces.filter((t: any) =>
-            t.type === 'debug' &&
-            (t.paths?.[0]?.event?.type?.startsWith('ai-') || t.type === 'knowledgeBase') &&
-            t.paths?.[0]?.event?.payload
+            ((t.paths?.[0]?.event?.type?.startsWith('ai-') && t.paths?.[0]?.event?.payload) || t.type === 'knowledgeBase')
           );
 
           const hasEndTrace = traces.some((t: any) => t.type === 'end');
