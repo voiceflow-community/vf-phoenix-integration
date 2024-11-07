@@ -9,7 +9,7 @@ import {
 const VOICEFLOW_DOMAIN = process.env.VOICEFLOW_DOMAIN || 'general-runtime.voiceflow.com';
 
 export const interact = async (req: Request, res: Response) => {
-
+    const startTime = Date.now();
     try {
       const { projectId, userId } = req.params;
 
@@ -33,7 +33,7 @@ export const interact = async (req: Request, res: Response) => {
       };
 
 
-      const startTime = Date.now();
+
       const response = await fetch(targetUrl, {
         method: req.method,
         headers: headers,
@@ -167,10 +167,13 @@ export const interact = async (req: Request, res: Response) => {
           const hasEndTrace = traces.some((t: any) => t.type === 'end');
           const tag = hasEndTrace ? ['end'] : [];
 
-          llmTraces.forEach((t: { time: number, paths: [{ event: { payload: any, type: string } }] }, index: number) => {
-            const currentTraceTime = t.time;
-            const previousTraceTime = index > 0 ? llmTraces[index - 1].time : currentTraceTime;
-            let params = t.paths[0].event.payload;
+          llmTraces.forEach((llmTrace: { time: number, paths: [{ event: { payload: any, type: string } }] }, index: number) => {
+            const fullTraceIndex = traces.findIndex((t: any) => t === llmTrace);
+            const currentTraceTime = llmTrace.time;
+            // Get previous trace time from full traces array
+            const previousTraceTime = fullTraceIndex > 0 ? traces[fullTraceIndex - 1].time : startTime;
+
+            let params = llmTrace.paths[0].event.payload;
             tracer.startActiveSpan("llm_call", { startTime: previousTraceTime },async (llmSpan) => {
               llmSpan.setAttributes({
                 [SemanticConventions.OPENINFERENCE_SPAN_KIND]: OpenInferenceSpanKind.LLM,
@@ -183,7 +186,7 @@ export const interact = async (req: Request, res: Response) => {
                 [SemanticConventions.LLM_TOKEN_COUNT_COMPLETION]: params.answerTokens,
                 [SemanticConventions.LLM_TOKEN_COUNT_TOTAL]: params.tokens,
                 [SemanticConventions.LLM_INVOCATION_PARAMETERS]: JSON.stringify({ 'model_name': params.model, 'temperature': params.temperature, 'max_tokens': params.maxTokens, 'multiplier': params.multiplier }),
-                [SemanticConventions.TAG_TAGS]: [t.paths[0].event.type],
+                [SemanticConventions.TAG_TAGS]: [llmTrace.paths[0].event.type],
               });
               llmSpan.setStatus({ code: SpanStatusCode.OK });
               llmSpan.end(currentTraceTime);
