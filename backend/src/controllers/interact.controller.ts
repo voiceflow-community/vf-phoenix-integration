@@ -105,8 +105,6 @@ export const interact = async (req: Request, res: Response) => {
             }
           ]}),
           [SemanticConventions.INPUT_MIME_TYPE]: MimeType.JSON,
-          //[SemanticConventions.INPUT_VALUE]: req.body.action.payload || "",
-          //[SemanticConventions.INPUT_MIME_TYPE]: MimeType.TEXT,
         });
 
         function extractTextContent(trace: any[]): { messages: { role: string; content: string; }[] } {
@@ -133,33 +131,46 @@ export const interact = async (req: Request, res: Response) => {
 
         // const assistantReply = voiceflowResponse.trace.find((t: any) => t.type === 'text' && t.payload.ai === true)?.payload.message;
         const assistantReply = extractTextContent(voiceflowResponse.trace);
-
+        let hSession = req.headers.sessionid || null;
+        let hVersion = req.headers.versionid || null;
+        let hOrigin = req.headers.origin || null;
+        let hReferer = req.headers.referer || null;
+        let hIP = req.headers['x-forwarded-for'] || '127.0.0.1';
         parentSpan.setAttributes({
           [SemanticConventions.LLM_MODEL_NAME]: 'Voiceflow',
           [SemanticConventions.OUTPUT_VALUE]: JSON.stringify(assistantReply),
           [SemanticConventions.OUTPUT_MIME_TYPE]: MimeType.JSON,
           [`${SemanticConventions.LLM_OUTPUT_MESSAGES}.0.${SemanticConventions.MESSAGE_CONTENT}`]: assistantReply.messages[0].content,
           [`${SemanticConventions.LLM_OUTPUT_MESSAGES}.0.${SemanticConventions.MESSAGE_ROLE}`]: "assistant",
-          //[SemanticConventions.METADATA]: JSON.stringify(metadata),
+          [SemanticConventions.METADATA]: JSON.stringify({
+              origin: hOrigin,
+              referer: hReferer,
+              ip: hIP,
+              session: hSession,
+              version: hVersion,
+          }),
           [SemanticConventions.USER_ID]: userId,
-          //[SemanticConventions.TAG_TAGS]: tags,
         });
+
+        const hasEndTrace = voiceflowResponse.trace.some((t: any) => t.type === 'end');
+        const tags = hasEndTrace ? ['end'] : [];
+
 
         // Filter LLM traces
         const llmTraces = voiceflowResponse.trace.filter((t: any) =>
           t.type === 'debug' &&
-          t.payload?.type === 'ai-set-parameters-model' &&
+          t.payload?.type.startsWith('ai-') &&
           t.paths?.[0]?.event?.payload
         );
 
-        llmTraces.forEach((t: { paths: [{ event: { payload: any } }] }) => {
+        llmTraces.forEach((t: { paths: [{ event: { payload: any, type: string } }] }) => {
           const params = t.paths[0].event.payload;
+
+          tags.push(t.paths[0].event.type);
 
           tracer.startActiveSpan("llm_call", async (llmSpan) => {
             llmSpan.setAttributes({
               [SemanticConventions.OPENINFERENCE_SPAN_KIND]: OpenInferenceSpanKind.LLM,
-              //[SemanticConventions.INPUT_VALUE]: JSON.stringify({ messages }),
-              //[SemanticConventions.INPUT_MIME_TYPE]: MimeType.JSON,
               [SemanticConventions.INPUT_VALUE]: params.assistant,
               [SemanticConventions.INPUT_MIME_TYPE]: MimeType.TEXT,
               [SemanticConventions.OUTPUT_VALUE]: params.output,
@@ -168,52 +179,17 @@ export const interact = async (req: Request, res: Response) => {
               [SemanticConventions.LLM_TOKEN_COUNT_PROMPT]: params.queryTokens,
               [SemanticConventions.LLM_TOKEN_COUNT_COMPLETION]: params.answerTokens,
               [SemanticConventions.LLM_TOKEN_COUNT_TOTAL]: params.tokens,
-
+              [SemanticConventions.TAG_TAGS]: tags,
             });
             llmSpan.setStatus({ code: SpanStatusCode.OK });
             llmSpan.end();
           });
         });
 
-        /* function sumTokenCounts(trace: any[]) {
-          const tokenSums = trace
-            .filter(t =>
-              t.type === 'debug' &&
-              t.payload?.type === 'ai-set-parameters-model' &&
-              t.paths?.[0]?.event?.payload
-            )
-            .reduce((acc, t) => {
-              const params = t.paths[0].event.payload;
-              return {
-                prompt: acc.prompt + (params.queryTokens || 0),
-                completion: acc.completion + (params.answerTokens || 0),
-                total: acc.total + (params.tokens || 0)
-              };
-            }, { prompt: 0, completion: 0, total: 0 });
-
-          return tokenSums;
-        } */
-
-        /* const tokenCounts = sumTokenCounts(voiceflowResponse.trace);
-
-        parentSpan.setAttributes({
-          [SemanticConventions.LLM_TOKEN_COUNT_PROMPT]: tokenCounts.prompt,
-          [SemanticConventions.LLM_TOKEN_COUNT_COMPLETION]: tokenCounts.completion,
-          [SemanticConventions.LLM_TOKEN_COUNT_TOTAL]: tokenCounts.total,
-        }); */
-
         parentSpan.setStatus({ code: SpanStatusCode.OK });
         parentSpan.end();
       });
 
-
-      /* const traceInfo = extractTraceInfo(
-        tracer,
-        voiceflowResponse.trace || [],
-        body,
-        req.headers,
-        userId
-      ); */
       return res.status(response.status).send(voiceflowResponse)
 
     } catch (error) {
@@ -224,183 +200,3 @@ export const interact = async (req: Request, res: Response) => {
     }
 };
 
-function extractTraceInfo(tracer: any, trace: any[], requestBody: any, requestHeaders: any, userId: string) {
-  let hSession = requestHeaders.sessionid || null;
-  let hVersion = requestHeaders.versionid || null;
-  let hOrigin = requestHeaders.origin || null;
-  let hReferer = requestHeaders.referer || null;
-  let hIP = requestHeaders['x-forwarded-for'] || '127.0.0.1';
-
-  const output = {
-    headers: {
-      origin: hOrigin,
-      referer: hReferer,
-      ip: hIP,
-      session: hSession,
-      version: hVersion,
-    },
-    userId: null as string | null,
-    userQuery: null as string | null,
-    aiResponse: null as string | null,
-    knowledgeBase: {
-      chunks: [] as string[],
-      query: null as string | null,
-      system: null as string | null,
-      assistant: null as string | null,
-      output: null as string | null,
-      model: null as string | null,
-      temperature: null as number | null,
-      maxTokens: null as number | null,
-      queryTokens: null as number | null,
-      answerTokens: null as number | null,
-      tokens: null as number | null,
-      multiplier: null as number | null,
-    },
-    aiParameters: {
-      system: null as string | null,
-      assistant: null as string | null,
-      output: null as string | null,
-      model: null as string | null,
-      temperature: null as number | null,
-      maxTokens: null as number | null,
-      queryTokens: null as number | null,
-      answerTokens: null as number | null,
-      tokens: null as number | null,
-      multiplier: null as number | null,
-    },
-    textResponses: [] as string[],
-    endOfConvo: false,
-  };
-
-
-  // Extract user query if action type is text
-  if (requestBody?.action?.type === 'text' && requestBody.action.payload) {
-    output.userQuery = requestBody.action.payload;
-  }
-
-  // Process trace items
-  trace.forEach((item) => {
-    if (item.type === 'end') {
-      output.endOfConvo = true;
-    }
-
-    if (item.type === 'text' && item.payload?.ai === true && item.payload.message) {
-      output.aiResponse = item.payload.message;
-    }
-
-    if (item.type === 'debug') {
-      processDebugItem(item, output);
-    }
-  });
-
-  tracer.startActiveSpan("chat", async (parentSpan: Span) => {
-    try {
-        parentSpan.setAttributes({
-          [SemanticConventions.OPENINFERENCE_SPAN_KIND]: OpenInferenceSpanKind.CHAIN,
-          [SemanticConventions.INPUT_VALUE]: JSON.stringify({ messages: [
-            {
-              "role": "system",
-              "content": output.aiParameters.system || ""
-            },
-            {
-              "role": "assistant",
-              "content": output.aiParameters.assistant || ""
-            },
-            {
-              "role": "user",
-              "content": output.userQuery || ""
-            }
-
-          ]}),
-          [SemanticConventions.INPUT_MIME_TYPE]: MimeType.JSON,
-        });
-
-        const spanId = parentSpan.spanContext().spanId;
-
-        parentSpan.setAttributes({
-          [SemanticConventions.LLM_MODEL_NAME]: (output as any).aiParameters.model,
-          [SemanticConventions.LLM_TOKEN_COUNT_PROMPT]: (output as any).aiParameters.queryTokens,
-          [SemanticConventions.LLM_TOKEN_COUNT_COMPLETION]: (output as any).aiParameters.answerTokens,
-          [SemanticConventions.LLM_TOKEN_COUNT_TOTAL]: (output as any).aiParameters.tokens,
-          [SemanticConventions.OUTPUT_VALUE]: (output as any).aiParameters.output,
-        });
-
-        tracer.startActiveSpan("llm_call", async (llmSpan: Span) => {
-          llmSpan.setAttributes({
-            [SemanticConventions.OPENINFERENCE_SPAN_KIND]: OpenInferenceSpanKind.LLM,
-            [SemanticConventions.INPUT_VALUE]: JSON.stringify({ messages: [
-              {
-                "role": "system",
-                "content": output.aiParameters.system || ""
-              },
-              {
-                "role": "assistant",
-                "content": output.aiParameters.assistant || ""
-              },
-              {
-                "role": "user",
-                "content": output.userQuery || ""
-              }
-
-            ]}),
-            [SemanticConventions.INPUT_MIME_TYPE]: MimeType.JSON,
-            [SemanticConventions.LLM_MODEL_NAME]: (output as any).aiParameters.model,
-            [SemanticConventions.LLM_TOKEN_COUNT_PROMPT]: (output as any).aiParameters.queryTokens,
-            [SemanticConventions.LLM_TOKEN_COUNT_COMPLETION]: (output as any).aiParameters.answerTokens,
-            [SemanticConventions.LLM_TOKEN_COUNT_TOTAL]: (output as any).aiParameters.tokens,
-            [SemanticConventions.OUTPUT_VALUE]: (output as any).aiParameters.output,
-          });
-          llmSpan.setStatus({ code: SpanStatusCode.OK });
-          llmSpan.end();
-        });
-        // Set parent span attributes with final output
-        const outputValue = JSON.stringify({
-          messages: [
-            {
-              role: "assistant",
-              content: (output as any).aiParameters.output,
-            },
-          ],
-        });
-
-        parentSpan.setAttributes({
-          [SemanticConventions.OUTPUT_VALUE]: outputValue,
-          [SemanticConventions.OUTPUT_MIME_TYPE]: MimeType.JSON,
-          [`${SemanticConventions.LLM_OUTPUT_MESSAGES}.0.${SemanticConventions.MESSAGE_CONTENT}`]: (output as any).aiParameters.output,
-          [`${SemanticConventions.LLM_OUTPUT_MESSAGES}.0.${SemanticConventions.MESSAGE_ROLE}`]: "assistant",
-          // [SemanticConventions.METADATA]: JSON.stringify(metadata),
-          [SemanticConventions.USER_ID]: userId,
-        });
-
-        parentSpan.setStatus({ code: SpanStatusCode.OK });
-        parentSpan.end();
-    } catch (error) {
-      console.error("Error:", error);
-      parentSpan.setStatus({
-        code: SpanStatusCode.ERROR,
-        message: (error as Error).message,
-      });
-      parentSpan.end();
-    }
-  })
-
-  return output;
-}
-
-function processDebugItem(item: any, output: any) {
-  if (item.payload.type === 'ai-response-parameters-model' && item.paths?.[0]?.event?.payload) {
-    const params = item.paths[0].event.payload;
-    output.aiParameters = {
-      system: params.system || null,
-      assistant: params.assistant || null,
-      output: params.output || null,
-      model: params.model || null,
-      temperature: params.temperature || null,
-      maxTokens: params.maxTokens || null,
-      queryTokens: params.queryTokens || null,
-      answerTokens: params.answerTokens || null,
-      tokens: params.tokens || null,
-      multiplier: params.multiplier || null,
-    };
-  }
-}
