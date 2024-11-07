@@ -31,7 +31,7 @@ export const interact = async (req: Request, res: Response) => {
           excludeTypes: ['flow', 'block'], // Override only excludeTypes
         }
       };
-
+      const startTime = Date.now();
       const response = await fetch(targetUrl, {
         method: req.method,
         headers: headers,
@@ -99,6 +99,7 @@ export const interact = async (req: Request, res: Response) => {
 
       tracer.startActiveSpan("chat", async (parentSpan) => {
         try {
+          parentSpan.setAttribute("start_time", startTime );
           parentSpan.setAttributes({
             [SemanticConventions.OPENINFERENCE_SPAN_KIND]: OpenInferenceSpanKind.CHAIN,
             [SemanticConventions.INPUT_VALUE]: JSON.stringify({ messages: [
@@ -170,8 +171,8 @@ export const interact = async (req: Request, res: Response) => {
             let params = t.paths[0].event.payload;
             lastTraceTime = t.time;
             tracer.startActiveSpan("llm_call", async (llmSpan) => {
+              llmSpan.setAttribute("start_time", t.time);
               llmSpan.setAttributes({
-                "start_time": t.time,
                 [SemanticConventions.OPENINFERENCE_SPAN_KIND]: OpenInferenceSpanKind.LLM,
                 [SemanticConventions.INPUT_VALUE]: params.assistant,
                 [SemanticConventions.INPUT_MIME_TYPE]: MimeType.TEXT,
@@ -188,9 +189,8 @@ export const interact = async (req: Request, res: Response) => {
               llmSpan.end();
             });
           });
-
+          parentSpan.setAttribute("end_time", lastTraceTime);
           parentSpan.setAttributes({
-            "end_time": lastTraceTime,
             [SemanticConventions.TAG_TAGS]: tag,
           });
           parentSpan.setStatus({ code: SpanStatusCode.OK });
