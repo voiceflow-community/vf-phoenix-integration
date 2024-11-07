@@ -53,12 +53,12 @@ export const interact = async (req: Request, res: Response) => {
       const voiceflowResponse = await response.json();
 
       // Log interaction details if needed
-      /* console.log(JSON.stringify({
+      console.log(JSON.stringify({
         projectId,
         userId,
         request: body,
         response: voiceflowResponse,
-      }, null, 2)); */
+      }, null, 2));
 
       // Return response to widget
       const safeHeaders = ['content-type', 'cache-control', 'expires'];
@@ -70,6 +70,8 @@ export const interact = async (req: Request, res: Response) => {
       // If the request is a launch, return the response immediately
       if (req.body?.action?.type === 'launch' || req.body?.request?.type === 'launch') {
         return res.status(response.status).send(voiceflowResponse)
+      } else {
+        res.status(response.status).send(voiceflowResponse)
       }
 
       const tracer = trace.getTracer("voiceflow-service");
@@ -92,105 +94,111 @@ export const interact = async (req: Request, res: Response) => {
           });
           parentSpan.end();
         });
-        return res.status(response.status).send(voiceflowResponse)
+        return
       }
 
       tracer.startActiveSpan("chat", async (parentSpan) => {
-        parentSpan.setAttributes({
-          [SemanticConventions.OPENINFERENCE_SPAN_KIND]: OpenInferenceSpanKind.CHAIN,
-          [SemanticConventions.INPUT_VALUE]: JSON.stringify({ messages: [
-            {
-              "role": "user",
-              "content": req.body.action.payload || ""
-            }
-          ]}),
-          [SemanticConventions.INPUT_MIME_TYPE]: MimeType.JSON,
-        });
-
-        function extractTextContent(trace: any[]): { messages: { role: string; content: string; }[] } {
-          const textContent = trace
-            .filter(t => t.type === 'text')
-            .map(t => {
-              if (t.type === 'text') {
-                return t.payload.message;
-              }
-
-              return t.payload.message //.replace(/<[^>]*>/g, '').replace(/\*\*/g, '');
-            })
-            .join('\n');
-
-          return {
-            messages: [
+        try {
+          parentSpan.setAttributes({
+            [SemanticConventions.OPENINFERENCE_SPAN_KIND]: OpenInferenceSpanKind.CHAIN,
+            [SemanticConventions.INPUT_VALUE]: JSON.stringify({ messages: [
               {
-                role: "assistant",
-                content: textContent,
-              },
-            ],
-          };
-        }
-
-        const assistantReply = extractTextContent(voiceflowResponse.trace);
-        let hSession = req.headers.sessionid || null;
-        let hVersion = req.headers.versionid || null;
-        let hOrigin = req.headers.origin || null;
-        let hReferer = req.headers.referer || null;
-        let hIP = req.headers['x-forwarded-for'] || '127.0.0.1';
-        parentSpan.setAttributes({
-          [SemanticConventions.LLM_MODEL_NAME]: 'Voiceflow',
-          [SemanticConventions.OUTPUT_VALUE]: JSON.stringify(assistantReply),
-          [SemanticConventions.OUTPUT_MIME_TYPE]: MimeType.JSON,
-          [`${SemanticConventions.LLM_OUTPUT_MESSAGES}.0.${SemanticConventions.MESSAGE_CONTENT}`]: assistantReply.messages[0].content,
-          [`${SemanticConventions.LLM_OUTPUT_MESSAGES}.0.${SemanticConventions.MESSAGE_ROLE}`]: "assistant",
-          [SemanticConventions.METADATA]: JSON.stringify({
-              origin: hOrigin,
-              referer: hReferer,
-              ip: hIP,
-              session: hSession,
-              version: hVersion,
-          }),
-          [SemanticConventions.USER_ID]: userId,
-        });
-
-        // Filter LLM traces
-        const llmTraces = voiceflowResponse.trace.filter((t: any) =>
-          t.type === 'debug' &&
-          t.paths?.[0]?.event?.type?.startsWith('ai-') &&
-          t.paths?.[0]?.event?.payload
-        );
-
-        const hasEndTrace = voiceflowResponse.trace.some((t: any) => t.type === 'end');
-        const tag = hasEndTrace ? ['end'] : [];
-
-        llmTraces.forEach((t: { paths: [{ event: { payload: any, type: string } }] }) => {
-          const params = t.paths[0].event.payload;
-
-          tracer.startActiveSpan("llm_call", async (llmSpan) => {
-            llmSpan.setAttributes({
-              [SemanticConventions.OPENINFERENCE_SPAN_KIND]: OpenInferenceSpanKind.LLM,
-              [SemanticConventions.INPUT_VALUE]: params.assistant,
-              [SemanticConventions.INPUT_MIME_TYPE]: MimeType.TEXT,
-              [SemanticConventions.OUTPUT_VALUE]: params.output,
-              [SemanticConventions.OUTPUT_MIME_TYPE]: MimeType.TEXT,
-              [SemanticConventions.LLM_MODEL_NAME]: params.model,
-              [SemanticConventions.LLM_TOKEN_COUNT_PROMPT]: params.queryTokens,
-              [SemanticConventions.LLM_TOKEN_COUNT_COMPLETION]: params.answerTokens,
-              [SemanticConventions.LLM_TOKEN_COUNT_TOTAL]: params.tokens,
-              [SemanticConventions.TAG_TAGS]: [t.paths[0].event.type],
-            });
-            llmSpan.setStatus({ code: SpanStatusCode.OK });
-            llmSpan.end();
+                "role": "user",
+                "content": req.body.action.payload || ""
+              }
+            ]}),
+            [SemanticConventions.INPUT_MIME_TYPE]: MimeType.JSON,
           });
-        });
 
-        parentSpan.setAttributes({
-          [SemanticConventions.TAG_TAGS]: tag,
-        });
-        parentSpan.setStatus({ code: SpanStatusCode.OK });
-        parentSpan.end();
-      });
+          function extractTextContent(trace: any[]): { messages: { role: string; content: string; }[] } {
+            const textContent = trace
+              .filter(t => t.type === 'text')
+              .map(t => {
+                if (t.type === 'text') {
+                  return t.payload.message;
+                }
 
-      return res.status(response.status).send(voiceflowResponse)
+                return t.payload.message //.replace(/<[^>]*>/g, '').replace(/\*\*/g, '');
+              })
+              .join('\n');
 
+            return {
+              messages: [
+                {
+                  role: "assistant",
+                  content: textContent,
+                },
+              ],
+            };
+          }
+
+          const assistantReply = extractTextContent(voiceflowResponse.trace);
+
+          let hSession = req.headers.sessionid || null;
+          let hVersion = req.headers.versionid || null;
+          let hOrigin = req.headers.origin || null;
+          let hReferer = req.headers.referer || null;
+          let hIP = req.headers['x-forwarded-for'] || '127.0.0.1';
+          parentSpan.setAttributes({
+            [SemanticConventions.LLM_MODEL_NAME]: 'Voiceflow',
+            [SemanticConventions.OUTPUT_VALUE]: JSON.stringify(assistantReply),
+            [SemanticConventions.OUTPUT_MIME_TYPE]: MimeType.JSON,
+            [`${SemanticConventions.LLM_OUTPUT_MESSAGES}.0.${SemanticConventions.MESSAGE_CONTENT}`]: assistantReply.messages[0].content,
+            [`${SemanticConventions.LLM_OUTPUT_MESSAGES}.0.${SemanticConventions.MESSAGE_ROLE}`]: "assistant",
+            [SemanticConventions.METADATA]: JSON.stringify({
+                origin: hOrigin,
+                referer: hReferer,
+                ip: hIP,
+                session: hSession,
+                version: hVersion,
+            }),
+            [SemanticConventions.USER_ID]: userId,
+          });
+
+          // Filter LLM traces
+          const llmTraces = voiceflowResponse.trace.filter((t: any) =>
+            t.type === 'debug' &&
+            t.paths?.[0]?.event?.type?.startsWith('ai-') &&
+            t.paths?.[0]?.event?.payload
+          );
+
+          const hasEndTrace = voiceflowResponse.trace.some((t: any) => t.type === 'end');
+          const tag = hasEndTrace ? ['end'] : [];
+
+          llmTraces.forEach((t: { paths: [{ event: { payload: any, type: string } }] }) => {
+            const params = t.paths[0].event.payload;
+
+            tracer.startActiveSpan("llm_call", async (llmSpan) => {
+              llmSpan.setAttributes({
+                [SemanticConventions.OPENINFERENCE_SPAN_KIND]: OpenInferenceSpanKind.LLM,
+                [SemanticConventions.INPUT_VALUE]: params.assistant,
+                [SemanticConventions.INPUT_MIME_TYPE]: MimeType.TEXT,
+                [SemanticConventions.OUTPUT_VALUE]: params.output,
+                [SemanticConventions.OUTPUT_MIME_TYPE]: MimeType.TEXT,
+                [SemanticConventions.LLM_MODEL_NAME]: params.model,
+                [SemanticConventions.LLM_TOKEN_COUNT_PROMPT]: params.queryTokens,
+                [SemanticConventions.LLM_TOKEN_COUNT_COMPLETION]: params.answerTokens,
+                [SemanticConventions.LLM_TOKEN_COUNT_TOTAL]: params.tokens,
+                [SemanticConventions.TAG_TAGS]: [t.paths[0].event.type],
+              });
+              llmSpan.setStatus({ code: SpanStatusCode.OK });
+              llmSpan.end();
+            });
+          });
+
+          parentSpan.setAttributes({
+            [SemanticConventions.TAG_TAGS]: tag,
+          });
+          parentSpan.setStatus({ code: SpanStatusCode.OK });
+        } catch (error) {
+          parentSpan.setStatus({
+            code: SpanStatusCode.ERROR,
+            message: (error as Error).message,
+          });
+        } finally {
+          parentSpan.end();
+        }
+      })
     } catch (error) {
       console.error("Error:", error);
       return res.status(500).json({
