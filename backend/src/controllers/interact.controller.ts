@@ -34,7 +34,7 @@ export const interact = async (req: Request, res: Response) => {
 
       const tracer = trace.getTracer("voiceflow-service");
 
-      tracer.startActiveSpan("chat", async (parentSpan) => {
+      tracer.startActiveSpan("chat", { startTime: Date.now() - (30 * 1000) }, async (parentSpan) => {
         parentSpan.setAttributes({
           [SemanticConventions.OPENINFERENCE_SPAN_KIND]: OpenInferenceSpanKind.CHAIN,
         });
@@ -86,7 +86,6 @@ export const interact = async (req: Request, res: Response) => {
 
 
       if (!response.ok) {
-        //tracer.startActiveSpan("chat", async (parentSpan) => {
           parentSpan.setAttributes({
             [SemanticConventions.OPENINFERENCE_SPAN_KIND]: OpenInferenceSpanKind.CHAIN,
             [SemanticConventions.INPUT_VALUE]: JSON.stringify({ messages: [
@@ -102,13 +101,10 @@ export const interact = async (req: Request, res: Response) => {
             message: `Voiceflow API request failed with status ${response.status}`,
           });
           parentSpan.end();
-        //});
         return
       }
 
-      //tracer.startActiveSpan("chat", async (parentSpan) => {
         try {
-          //parentSpan.setAttribute("start_time", startTime );
           parentSpan.setAttributes({
             [SemanticConventions.OPENINFERENCE_SPAN_KIND]: OpenInferenceSpanKind.CHAIN,
             [SemanticConventions.INPUT_VALUE]: JSON.stringify({ messages: [
@@ -198,7 +194,6 @@ export const interact = async (req: Request, res: Response) => {
               llmSpan.end();
             });
           });
-          //parentSpan.setAttribute("end_time", new Date().toISOString());
           parentSpan.setAttributes({
             [SemanticConventions.TAG_TAGS]: tag,
           });
