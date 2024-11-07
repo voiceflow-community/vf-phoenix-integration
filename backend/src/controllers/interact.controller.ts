@@ -17,6 +17,7 @@ export const interact = async (req: Request, res: Response) => {
       const { projectId, userId } = req.params;
 
       let targetUrl = `https://${VOICEFLOW_DOMAIN}${req.originalUrl}`;
+      console.log(targetUrl);
       let headers: any = {
         ...req.headers,
         host: new URL(`https://${VOICEFLOW_DOMAIN}`).host,

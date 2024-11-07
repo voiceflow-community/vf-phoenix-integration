@@ -38,6 +38,12 @@ router.route("/public/:projectId/state/user/:userId/interact").post(
   }
 );
 
+router.get("/",
+  async (res: Response): Promise<void> => {
+    res.send("Voiceflow | Arize Phoenix Service");
+  }
+);
+
 // Catch-all route for everything else
 router.use("*", simpleProxy);
 
