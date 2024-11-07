@@ -1,3 +1,5 @@
+// THIS CONTROLLER IS DEPRECATED AND WILL BE REMOVED IN A FUTURE RELEASE
+
 import { Request, Response } from "express";
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 import {
@@ -10,11 +12,6 @@ const VOICEFLOW_API_KEY = process.env.VOICEFLOW_API_KEY;
 const VOICEFLOW_DOMAIN = process.env.VOICEFLOW_DOMAIN || 'general-runtime.voiceflow.com';
 const VOICEFLOW_VERSION_ID = process.env.VOICEFLOW_VERSION_ID || 'development';
 const TOKEN_CONSUMPTION_TYPE = process.env.TOKEN_CONSUMPTION_TYPE || 'inference';
-
-type Message = {
-  role: string;
-  content: string;
-};
 
 export const log = async (req: Request, res: Response) => {
   const tracer = trace.getTracer("voiceflow-service");
@@ -71,7 +68,7 @@ export const log = async (req: Request, res: Response) => {
       }
 
       const voiceflowResponse = await response.json();
-     
+
       let debugInfo = {};
       let assistantReply = "";
 
@@ -109,7 +106,7 @@ export const log = async (req: Request, res: Response) => {
             if (trace.payload.chunks) {
               for (let i = 0; i < trace.payload.chunks.length; i++) {
                 const chunk = trace.payload.chunks[i];
-                knowledgeBaseSpan.setAttributes({ 
+                knowledgeBaseSpan.setAttributes({
                   [`${SemanticConventions.RETRIEVAL_DOCUMENTS}.${i}.${SemanticConventions.DOCUMENT_CONTENT}`]: chunk.documentData?.name,
                   [`${SemanticConventions.RETRIEVAL_DOCUMENTS}.${i}.${SemanticConventions.DOCUMENT_ID}`]: chunk.documentID,
                   [`${SemanticConventions.RETRIEVAL_DOCUMENTS}.${i}.${SemanticConventions.DOCUMENT_SCORE}`]: chunk.score,
@@ -117,12 +114,12 @@ export const log = async (req: Request, res: Response) => {
                 });
               }
             }
-            
+
             knowledgeBaseSpan.setStatus({ code: SpanStatusCode.OK });
             knowledgeBaseSpan.end();
           });
         }
-        
+
         else if (trace.type === 'text' && trace.payload.ai === true) {
           assistantReply = trace.payload.message;
         }

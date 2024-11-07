@@ -1,3 +1,5 @@
+// THIS ROUTE IS DEPRECATED AND WILL BE REMOVED IN A FUTURE RELEASE
+
 import express, { Router } from "express";
 import { log } from "../controllers/trace.controller";
 

@@ -6,10 +6,7 @@ import {
   SemanticConventions,
 } from "@arizeai/openinference-semantic-conventions";
 
-const VOICEFLOW_API_KEY = process.env.VOICEFLOW_API_KEY;
 const VOICEFLOW_DOMAIN = process.env.VOICEFLOW_DOMAIN || 'general-runtime.voiceflow.com';
-const VOICEFLOW_VERSION_ID = process.env.VOICEFLOW_VERSION_ID || 'development';
-const MODE = process.env.MODE?.toLowerCase() || 'widget';
 
 export const interact = async (req: Request, res: Response) => {
 
@@ -44,12 +41,12 @@ export const interact = async (req: Request, res: Response) => {
       const voiceflowResponse = await response.json();
 
       // Log interaction details if needed
-      console.log(JSON.stringify({
+      /* console.log(JSON.stringify({
         projectId,
         userId,
         request: body,
         response: voiceflowResponse,
-      }, null, 2));
+      }, null, 2)); */
 
       // Return response to widget
       const safeHeaders = ['content-type', 'cache-control', 'expires'];

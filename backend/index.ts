@@ -40,22 +40,24 @@ app.use(express.json());
 app.use(express.text());
 
 app.get("/", (res: Response) => {
-  res.status(200).send("Voiceflow | Arize Phoenix Service");
+  res.send("Voiceflow | Arize Phoenix Service");
 });
 
 app.get("/health", (res: Response) => {
-  res.status(200).send({ status: "OK" });
+  res.send({ status: "OK" });
 });
 
 app.use("/", publicRouter);
-
-app.use("/api/trace", traceRouter);
 
 app.use("/api/log", logRouter);
 
 app.use("/api/feedback", feedbackRouter);
 
 app.use("/api/formfeedback", simpleFeedbackRouter);
+
+// DEPRECATED ROUTES
+app.use("/api/trace", traceRouter);
+
 
 app.listen(port, () => {
   console.log(`⚡️[server]: Server is running at http://localhost:${port}`);
