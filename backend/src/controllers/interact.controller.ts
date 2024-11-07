@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { Span,SpanStatusCode, trace } from "@opentelemetry/api";
+import { SpanStatusCode, trace } from "@opentelemetry/api";
 import {
   MimeType,
   OpenInferenceSpanKind,
@@ -32,19 +32,15 @@ export const interact = async (req: Request, res: Response) => {
         }
       };
 
-
-
       const response = await fetch(targetUrl, {
         method: req.method,
         headers: headers,
         body: JSON.stringify(body),
       });
 
-
       // Get response from Voiceflow
       let voiceflowResponse = await response.json();
       let traces = [];
-
 
       // Log interaction details if needed
       console.log(JSON.stringify({
@@ -174,8 +170,8 @@ export const interact = async (req: Request, res: Response) => {
               tracer.startActiveSpan("knowledgeBaseRetrieval", async (knowledgeBaseSpan) => {
                 knowledgeBaseSpan.setAttributes({
                   [SemanticConventions.OPENINFERENCE_SPAN_KIND]: OpenInferenceSpanKind.RETRIEVER,
-                  [SemanticConventions.INPUT_VALUE]: JSON.stringify({ messages: llmTrace.payload.query?.messages }),
-                  [SemanticConventions.INPUT_MIME_TYPE]: MimeType.JSON,
+                  [SemanticConventions.INPUT_VALUE]: traces[fullTraceIndex - 1]?.payload?.message?.replace('Query received: ','') || '',
+                  [SemanticConventions.INPUT_MIME_TYPE]: MimeType.TEXT,
                   [SemanticConventions.OUTPUT_VALUE]: llmTrace.payload.query?.output,
                 });
 
