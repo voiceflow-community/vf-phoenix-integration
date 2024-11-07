@@ -36,6 +36,10 @@ app.use(cors({
 app.use(express.json());
 app.use(express.text());
 
+app.get("/", (req: Request, res: Response) => {
+  res.send("Voiceflow | Arize Phoenix Service");
+});
+
 app.use("/", publicRouter);
 
 app.use("/api/trace", traceRouter);
