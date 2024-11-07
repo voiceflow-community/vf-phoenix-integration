@@ -98,18 +98,18 @@ export const interact = async (req: Request, res: Response) => {
       tracer.startActiveSpan("chat", async (parentSpan) => {
         parentSpan.setAttributes({
           [SemanticConventions.OPENINFERENCE_SPAN_KIND]: OpenInferenceSpanKind.CHAIN,
-          /* [SemanticConventions.INPUT_VALUE]: JSON.stringify({ messages: [
+          [SemanticConventions.INPUT_VALUE]: JSON.stringify({ messages: [
             {
               "role": "user",
               "content": req.body.action.payload || ""
             }
           ]}),
-          [SemanticConventions.INPUT_MIME_TYPE]: MimeType.JSON, */
-          [SemanticConventions.INPUT_VALUE]: req.body.action.payload || "",
-          [SemanticConventions.INPUT_MIME_TYPE]: MimeType.TEXT,
+          [SemanticConventions.INPUT_MIME_TYPE]: MimeType.JSON,
+          //[SemanticConventions.INPUT_VALUE]: req.body.action.payload || "",
+          //[SemanticConventions.INPUT_MIME_TYPE]: MimeType.TEXT,
         });
 
-        function extractTextContent(trace: any[]): string {
+        function extractTextContent(trace: any[]): { messages: { role: string; content: string; }[] } {
           const textContent = trace
             .filter(t => t.type === 'text')
             .map(t => {
@@ -121,16 +121,24 @@ export const interact = async (req: Request, res: Response) => {
             })
             .join('\n');
 
-          return textContent;
+          return {
+            messages: [
+              {
+                role: "assistant",
+                content: textContent,
+              },
+            ],
+          };
         }
 
         // const assistantReply = voiceflowResponse.trace.find((t: any) => t.type === 'text' && t.payload.ai === true)?.payload.message;
+        const assistantReply = extractTextContent(voiceflowResponse.trace);
 
         parentSpan.setAttributes({
           [SemanticConventions.LLM_MODEL_NAME]: 'Voiceflow',
-          [SemanticConventions.OUTPUT_VALUE]: extractTextContent(voiceflowResponse.trace),
-          [SemanticConventions.OUTPUT_MIME_TYPE]: MimeType.TEXT,
-          [`${SemanticConventions.LLM_OUTPUT_MESSAGES}.0.${SemanticConventions.MESSAGE_CONTENT}`]: extractTextContent(voiceflowResponse.trace),
+          [SemanticConventions.OUTPUT_VALUE]: JSON.stringify(assistantReply),
+          [SemanticConventions.OUTPUT_MIME_TYPE]: MimeType.JSON,
+          [`${SemanticConventions.LLM_OUTPUT_MESSAGES}.0.${SemanticConventions.MESSAGE_CONTENT}`]: assistantReply.messages[0].content,
           [`${SemanticConventions.LLM_OUTPUT_MESSAGES}.0.${SemanticConventions.MESSAGE_ROLE}`]: "assistant",
           //[SemanticConventions.METADATA]: JSON.stringify(metadata),
           [SemanticConventions.USER_ID]: userId,
@@ -167,7 +175,7 @@ export const interact = async (req: Request, res: Response) => {
           });
         });
 
-        function sumTokenCounts(trace: any[]) {
+        /* function sumTokenCounts(trace: any[]) {
           const tokenSums = trace
             .filter(t =>
               t.type === 'debug' &&
@@ -184,15 +192,15 @@ export const interact = async (req: Request, res: Response) => {
             }, { prompt: 0, completion: 0, total: 0 });
 
           return tokenSums;
-        }
+        } */
 
-        const tokenCounts = sumTokenCounts(voiceflowResponse.trace);
+        /* const tokenCounts = sumTokenCounts(voiceflowResponse.trace);
 
         parentSpan.setAttributes({
           [SemanticConventions.LLM_TOKEN_COUNT_PROMPT]: tokenCounts.prompt,
           [SemanticConventions.LLM_TOKEN_COUNT_COMPLETION]: tokenCounts.completion,
           [SemanticConventions.LLM_TOKEN_COUNT_TOTAL]: tokenCounts.total,
-        });
+        }); */
 
         parentSpan.setStatus({ code: SpanStatusCode.OK });
         parentSpan.end();
