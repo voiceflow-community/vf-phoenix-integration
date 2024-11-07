@@ -159,7 +159,7 @@ export const interact = async (req: Request, res: Response) => {
         // Filter LLM traces
         const llmTraces = voiceflowResponse.trace.filter((t: any) =>
           t.type === 'debug' &&
-          t.payload?.type.startsWith('ai-') &&
+          t.paths?.[0]?.event?.type?.startsWith('ai-') &&
           t.paths?.[0]?.event?.payload
         );
 
