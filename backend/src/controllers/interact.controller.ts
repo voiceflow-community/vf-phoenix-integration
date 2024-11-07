@@ -106,6 +106,36 @@ export const interact = async (req: Request, res: Response) => {
           ]}),
           [SemanticConventions.INPUT_MIME_TYPE]: MimeType.JSON,
         });
+
+        function extractTextContent(trace: any[]): string {
+          const textContent = trace
+            .filter(t => t.type === 'text')
+            .map(t => {
+              if (t.type === 'text') {
+                return t.payload.message;
+              }
+
+              return t.payload.message //.replace(/<[^>]*>/g, '').replace(/\*\*/g, '');
+            })
+            .join('\n');
+
+          return textContent;
+        }
+
+        // const assistantReply = voiceflowResponse.trace.find((t: any) => t.type === 'text' && t.payload.ai === true)?.payload.message;
+
+        parentSpan.setAttributes({
+          [SemanticConventions.LLM_MODEL_NAME]: 'Voiceflow',
+          [SemanticConventions.OUTPUT_VALUE]: extractTextContent(voiceflowResponse.trace),
+          [SemanticConventions.OUTPUT_MIME_TYPE]: MimeType.TEXT,
+          [`${SemanticConventions.LLM_OUTPUT_MESSAGES}.0.${SemanticConventions.MESSAGE_CONTENT}`]: extractTextContent(voiceflowResponse.trace),
+          [`${SemanticConventions.LLM_OUTPUT_MESSAGES}.0.${SemanticConventions.MESSAGE_ROLE}`]: "assistant",
+          //[SemanticConventions.METADATA]: JSON.stringify(metadata),
+          [SemanticConventions.USER_ID]: userId,
+          //[SemanticConventions.TAG_TAGS]: tags,
+        });
+
+        // Filter LLM traces
         const llmTraces = voiceflowResponse.trace.filter((t: any) =>
           t.type === 'debug' &&
           t.payload?.type === 'ai-set-parameters-model' &&
@@ -134,6 +164,9 @@ export const interact = async (req: Request, res: Response) => {
             llmSpan.end();
           });
         });
+
+        parentSpan.setStatus({ code: SpanStatusCode.OK });
+        parentSpan.end();
       });
 
 
