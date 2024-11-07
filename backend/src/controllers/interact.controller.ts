@@ -167,7 +167,7 @@ export const interact = async (req: Request, res: Response) => {
             // Get previous trace time from full traces array
             const previousTraceTime = fullTraceIndex > 0 ? traces[fullTraceIndex - 1].time : startTime;
             if (llmTrace.type === 'knowledgeBase') {
-              tracer.startActiveSpan("knowledgeBaseRetrieval", async (knowledgeBaseSpan) => {
+              tracer.startActiveSpan("knowledgeBaseRetrieval", { startTime: previousTraceTime }, async (knowledgeBaseSpan) => {
                 knowledgeBaseSpan.setAttributes({
                   [SemanticConventions.OPENINFERENCE_SPAN_KIND]: OpenInferenceSpanKind.RETRIEVER,
                   [SemanticConventions.INPUT_VALUE]: traces[fullTraceIndex - 1]?.payload?.message?.replace('Query received: ','') || '',
