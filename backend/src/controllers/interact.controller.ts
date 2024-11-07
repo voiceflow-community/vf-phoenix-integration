@@ -31,7 +31,7 @@ export const interact = async (req: Request, res: Response) => {
           excludeTypes: ['flow', 'block'], // Override only excludeTypes
         }
       };
-      const startTime = Date.now();
+      const startTime = new Date().toISOString();
       const response = await fetch(targetUrl, {
         method: req.method,
         headers: headers,
@@ -189,7 +189,7 @@ export const interact = async (req: Request, res: Response) => {
               llmSpan.end();
             });
           });
-          parentSpan.setAttribute("end_time", lastTraceTime);
+          parentSpan.setAttribute("end_time", new Date().toISOString());
           parentSpan.setAttributes({
             [SemanticConventions.TAG_TAGS]: tag,
           });
