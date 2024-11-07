@@ -166,13 +166,12 @@ export const interact = async (req: Request, res: Response) => {
 
           const hasEndTrace = traces.some((t: any) => t.type === 'end');
           const tag = hasEndTrace ? ['end'] : [];
-          let lastTraceTime = 0;
 
-          llmTraces.forEach((t: { time: number, paths: [{ event: { payload: any, type: string } }] }) => {
+          llmTraces.forEach((t: { time: number, paths: [{ event: { payload: any, type: string } }] }, index: number) => {
+            const currentTraceTime = t.time;
+            const previousTraceTime = index > 0 ? llmTraces[index - 1].time : currentTraceTime;
             let params = t.paths[0].event.payload;
-            lastTraceTime = t.time;
-            tracer.startActiveSpan("llm_call", async (llmSpan) => {
-              llmSpan.setAttribute("start_time", t.time);
+            tracer.startActiveSpan("llm_call", { startTime: previousTraceTime },async (llmSpan) => {
               llmSpan.setAttributes({
                 [SemanticConventions.OPENINFERENCE_SPAN_KIND]: OpenInferenceSpanKind.LLM,
                 [SemanticConventions.INPUT_VALUE]: params.assistant,
@@ -187,7 +186,7 @@ export const interact = async (req: Request, res: Response) => {
                 [SemanticConventions.TAG_TAGS]: [t.paths[0].event.type],
               });
               llmSpan.setStatus({ code: SpanStatusCode.OK });
-              llmSpan.end();
+              llmSpan.end(currentTraceTime);
             });
           });
           parentSpan.setAttributes({
