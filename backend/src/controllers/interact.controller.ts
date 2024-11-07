@@ -203,9 +203,7 @@ export const interact = async (req: Request, res: Response) => {
             [SemanticConventions.TAG_TAGS]: tag,
           });
 
-          parentSpan.setAttributes({
-            duration: 8000
-          });
+          parentSpan.setAttribute('custom.duration_seconds', 8);
           parentSpan.setStatus({ code: SpanStatusCode.OK });
         } catch (error) {
           parentSpan.setStatus({
@@ -213,7 +211,7 @@ export const interact = async (req: Request, res: Response) => {
             message: (error as Error).message,
           });
         } finally {
-          parentSpan.end();
+          parentSpan.end(Date.now() + (50 * 1000));
         }
       })
     } catch (error) {
