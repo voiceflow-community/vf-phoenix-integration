@@ -43,13 +43,6 @@ export const interact = async (req: Request, res: Response) => {
       tracer.startActiveSpan("chat", async (parentSpan) => {
         parentSpan.setAttributes({
           [SemanticConventions.OPENINFERENCE_SPAN_KIND]: OpenInferenceSpanKind.CHAIN,
-          [SemanticConventions.INPUT_VALUE]: JSON.stringify({ messages: [
-            {
-              "role": "user",
-              "content": req.body.action.text || ""
-            }
-          ]}),
-          [SemanticConventions.INPUT_MIME_TYPE]: MimeType.JSON,
         });
 
 
