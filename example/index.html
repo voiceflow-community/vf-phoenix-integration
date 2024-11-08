@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+  <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Voiceflow | Phoenix Demo</title>
+    </head>
+    <body>
+      <script type="module">
+        import { FeedbackExtension } from 'https://demo-agent.proxy-voiceflow.com/extensions.js';
+        (function (d, t) {
+          var v = d.createElement(t),
+            s = d.getElementsByTagName(t)[0];
+          v.onload = function () {
+            window.voiceflow.chat.load({
+              verify: { projectID: '67220116d6009327e2308daa' },
+              url: 'https://phoenix-demo-logs.proxy-voiceflow.com',
+              versionID: 'development',
+              user: {
+                name: 'Demo User',
+              },
+              render: {
+                mode: 'overlay',
+              },
+              autostart: true,
+              allowDangerousHTML: true,
+              assistant: {
+                extensions: [
+                  FeedbackExtension,
+                ],
+              },
+            });
+          };
+          v.src = 'https://cdn.voiceflow.com/widget/bundle.mjs';
+          v.type = 'text/javascript';
+          s.parentNode.insertBefore(v, s);
+        })(document, 'script');
+      </script>
+    </body>
+</html>

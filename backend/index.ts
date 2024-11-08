@@ -39,21 +39,21 @@ app.use(cors({
 app.use(express.json());
 app.use(express.text());
 
-app.get("/", (req: Request, res: Response) => {
-  res.status(200).send("Voiceflow | Arize Phoenix Service");
-});
-
 app.get("/health", (req: Request, res: Response) => {
   res.status(200).send({ status: "OK" });
 });
-
-app.use("/", publicRouter);
 
 app.use("/api/log", logRouter);
 
 app.use("/api/feedback", feedbackRouter);
 
 app.use("/api/formfeedback", simpleFeedbackRouter);
+
+app.get("/", (req: Request, res: Response) => {
+  res.status(200).send("Voiceflow | Arize Phoenix Service");
+});
+
+app.use("/", publicRouter);
 
 // DEPRECATED ROUTES
 app.use("/api/trace", traceRouter);

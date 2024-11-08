@@ -18,6 +18,7 @@ you can use the .env.template file as a template.
 - `PHOENIX_CSRF_TRUSTED_ORIGINS` - Allowed origins for Phoenix traces (default: http://localhost:5252)
 - `COLLECTOR_ENDPOINT` - http://phoenix:6006/v1/traces
 - `VOICEFLOW_DOMAIN` - Voiceflow domain (default: general-runtime.voiceflow.com)
+- `VOICEFLOW_API_KEY` - Voiceflow API key (required only if you want to send the span id to your agent)
 - `ALLOWED_ORIGINS` - Allowed origins for Phoenix traces (default: http://localhost:5252)
 - `PORT` - Backend server port (default: 5252)
 - `NODE_ENV` - Node environment (default: development - allows all origins)
