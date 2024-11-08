@@ -115,7 +115,7 @@ export const interact = async (req: Request, res: Response) => {
           text: action?.text,
           label: action?.payload?.label,
           query: action?.payload?.query,
-          intent: action?.payload?.intent.name,
+          intent: action?.payload?.intent?.name,
         };
       };
 
