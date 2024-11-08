@@ -5,7 +5,7 @@ import {
   OpenInferenceSpanKind,
   SemanticConventions,
 } from "@arizeai/openinference-semantic-conventions";
-import { spanService } from "../services/span.service";
+import db from '../config/database';
 
 const VOICEFLOW_DOMAIN = process.env.VOICEFLOW_DOMAIN || 'general-runtime.voiceflow.com';
 const VOICEFLOW_API_KEY = process.env.VOICEFLOW_API_KEY || null;
@@ -74,8 +74,14 @@ export const interact = async (req: Request, res: Response) => {
       const tracer = trace.getTracer("voiceflow-service");
       tracer.startActiveSpan("chat", { startTime: startTime }, async (parentSpan) => {
       const spanId = parentSpan.spanContext().spanId || null;
+
+      // Save new span and mark previous as not current
       if (spanId) {
-        spanService.addSpanId(spanId);
+        db.prepare('UPDATE spans SET is_current = false WHERE user_id = ?').run(userId);
+        db.prepare(`
+          INSERT INTO spans (span_id, user_id, start_time, end_time, is_current)
+          VALUES (?, ?, ?, ?, true)
+        `).run(spanId, userId, startTime, Date.now());
       }
 
       if (!response.ok) {
@@ -282,6 +288,11 @@ export const interact = async (req: Request, res: Response) => {
             message: (error as Error).message,
           });
         } finally {
+          // Update end time when span completes
+          if (spanId) {
+            db.prepare('UPDATE spans SET end_time = ? WHERE span_id = ?')
+              .run(Date.now(), spanId);
+          }
           parentSpan.end();
         }
       })
