@@ -17,9 +17,21 @@ export const getCurrentSpan = async (req: Request, res: Response) => {
 
 export const getNextSpan = async (req: Request, res: Response) => {
   const { userId } = req.params;
-  const currentSpan = db.prepare('SELECT * FROM spans WHERE user_id = ? AND is_current = true').get(userId) as Span | undefined;
+  const { spanId } = req.query;
+
+  let currentSpan: Span | undefined;
+
+  if (spanId) {
+    currentSpan = db.prepare('SELECT * FROM spans WHERE user_id = ? AND span_id = ?')
+      .get(userId, spanId) as Span | undefined;
+  } else {
+    currentSpan = db.prepare('SELECT * FROM spans WHERE user_id = ? AND is_current = true')
+      .get(userId) as Span | undefined;
+  }
+
   const nextSpan = db.prepare('SELECT * FROM spans WHERE user_id = ? AND start_time > ? ORDER BY start_time LIMIT 1')
     .get(userId, currentSpan?.end_time || 0);
+
   return res.json(nextSpan || null);
 };
 
