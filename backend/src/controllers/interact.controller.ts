@@ -7,6 +7,7 @@ import {
 } from "@arizeai/openinference-semantic-conventions";
 
 const VOICEFLOW_DOMAIN = process.env.VOICEFLOW_DOMAIN || 'general-runtime.voiceflow.com';
+const VOICEFLOW_API_KEY = process.env.VOICEFLOW_API_KEY || null;
 
 export const interact = async (req: Request, res: Response) => {
     const startTime = Date.now();
@@ -14,7 +15,7 @@ export const interact = async (req: Request, res: Response) => {
       const { projectId, userId } = req.params;
 
       let targetUrl = `https://${VOICEFLOW_DOMAIN}${req.originalUrl}`;
-      console.log(targetUrl);
+
       let headers: any = {
         ...req.headers,
         host: new URL(`https://${VOICEFLOW_DOMAIN}`).host,
@@ -24,48 +25,11 @@ export const interact = async (req: Request, res: Response) => {
       // Remove headers that shouldn't be forwarded
       delete headers['content-length'];
 
-      // If the request is a launch, return the response immediately and don't trace
-      if (req.body?.action?.type === 'launch' || req.body?.request?.type === 'launch') {
         const body = {
           ...req.body,
           config: {
             ...req.body.config, // Preserve existing config
             excludeTypes: ['flow', 'block'], // Override only excludeTypes
-          }
-        };
-
-        const response = await fetch(targetUrl, {
-          method: req.method,
-          headers: headers,
-          body: JSON.stringify(body),
-        });
-
-        let voiceflowResponse = await response.json();
-
-        // Return response to widget
-        const safeHeaders = ['content-type', 'cache-control', 'expires'];
-        safeHeaders.forEach(header => {
-          const value = response.headers.get(header);
-          if (value) res.set(header, value);
-        });
-
-        return res.status(response.status).send(voiceflowResponse)
-      } else {
-        const tracer = trace.getTracer("voiceflow-service");
-        tracer.startActiveSpan("chat", { startTime: startTime }, async (parentSpan) => {
-        const spanId = parentSpan.spanContext().spanId;
-
-        const body = {
-          ...req.body,
-          config: {
-            ...req.body.config, // Preserve existing config
-            excludeTypes: ['flow', 'block'], // Override only excludeTypes
-          },
-          event: {
-            type: "launch",
-            payload: {
-              phoenixSpanID: spanId
-            }
           }
         };
 
@@ -105,6 +69,23 @@ export const interact = async (req: Request, res: Response) => {
           traces = voiceflowResponse.trace;
           voiceflowResponse.trace = voiceflowResponse.trace.filter((trace: any) => trace.type !== 'debug');
         }
+
+      const tracer = trace.getTracer("voiceflow-service");
+      tracer.startActiveSpan("chat", { startTime: startTime }, async (parentSpan) => {
+      const spanId = parentSpan.spanContext().spanId || null;
+
+      if(VOICEFLOW_API_KEY && spanId) {
+        fetch(`https://${VOICEFLOW_DOMAIN}/state/user/${userId}/variables`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': VOICEFLOW_API_KEY
+          },
+          body: JSON.stringify({
+            phoenixSpanID: spanId
+          }),
+        });
+      }
 
         if (!response.ok) {
             parentSpan.setAttributes({
@@ -253,7 +234,6 @@ export const interact = async (req: Request, res: Response) => {
             parentSpan.end();
           }
         })
-      }
     } catch (error) {
       console.error("Error:", error);
       return res.status(500).json({
