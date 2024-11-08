@@ -14,7 +14,7 @@ export const getCurrentSpan = async (req: Request, res: Response) => {
     const { userId } = req.params;
     const span = db.prepare('SELECT * FROM spans WHERE user_id = ? AND is_current = true').get(userId);
     return res.json(span || null);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error getting current span:', error);
     return res.status(500).json({
       error: 'Internal server error',
@@ -24,23 +24,31 @@ export const getCurrentSpan = async (req: Request, res: Response) => {
 };
 
 export const getNextSpan = async (req: Request, res: Response) => {
-  const { userId } = req.params;
-  const { spanId } = req.query;
+  try {
+    const { userId } = req.params;
+    const { spanId } = req.query;
 
-  let currentSpan: Span | undefined;
+    let currentSpan: Span | undefined;
 
-  if (spanId) {
-    currentSpan = db.prepare('SELECT * FROM spans WHERE user_id = ? AND span_id = ?')
-      .get(userId, spanId) as Span | undefined;
-  } else {
-    currentSpan = db.prepare('SELECT * FROM spans WHERE user_id = ? AND is_current = true')
-      .get(userId) as Span | undefined;
+    if (spanId) {
+      currentSpan = db.prepare('SELECT * FROM spans WHERE user_id = ? AND span_id = ?')
+        .get(userId, spanId) as Span | undefined;
+    } else {
+      currentSpan = db.prepare('SELECT * FROM spans WHERE user_id = ? AND is_current = true')
+        .get(userId) as Span | undefined;
+    }
+
+    const nextSpan = db.prepare('SELECT * FROM spans WHERE user_id = ? AND start_time > ? ORDER BY start_time LIMIT 1')
+      .get(userId, currentSpan?.end_time || 0);
+
+    return res.json(nextSpan || null);
+  } catch (error: any) {
+    console.error('Error getting next span:', error);
+    return res.status(500).json({
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
-
-  const nextSpan = db.prepare('SELECT * FROM spans WHERE user_id = ? AND start_time > ? ORDER BY start_time LIMIT 1')
-    .get(userId, currentSpan?.end_time || 0);
-
-  return res.json(nextSpan || null);
 };
 
 export const getAllSpans = async (req: Request, res: Response) => {
