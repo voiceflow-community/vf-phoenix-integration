@@ -1,6 +1,18 @@
 import { Request, Response } from "express";
 import { spanService } from "../services/span.service";
 
+export const getCurrentSpan = async (req: Request, res: Response) => {
+  const currentSpanId = spanService.getCurrentSpanId();
+
+  if (!currentSpanId) {
+    return res.status(404).json({
+      error: "No spans found"
+    });
+  }
+
+  res.json({ currentSpanId });
+};
+
 export const getNextSpan = async (req: Request, res: Response) => {
   const { currentSpanId } = req.query;
 

@@ -9,6 +9,10 @@ class SpanService {
     this.spanIds.push(spanId);
   }
 
+  getCurrentSpanId(): string | null {
+    return this.spanIds.length > 0 ? this.spanIds[this.spanIds.length - 1] : null;
+  }
+
   getNextSpanId(currentSpanId: string): string | null {
     const currentIndex = this.spanIds.indexOf(currentSpanId);
     if (currentIndex === -1 || currentIndex === this.spanIds.length - 1) {
@@ -18,7 +22,7 @@ class SpanService {
   }
 
   getAllSpanIds(): string[] {
-    return [...this.spanIds];
+    return [...this.spanIds].reverse();
   }
 }
 
