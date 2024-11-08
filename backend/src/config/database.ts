@@ -1,6 +1,8 @@
 import Database from 'better-sqlite3';
+import type { Database as DatabaseType } from 'better-sqlite3';
 
-const db = new Database('spans.db');
+const db: DatabaseType = new Database('spans.db');
+
 
 // Create spans table if it doesn't exist
 db.exec(`
