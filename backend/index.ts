@@ -6,6 +6,7 @@ import logRouter from "./src/routes/log.route";
 import feedbackRouter from "./src/routes/feedback.route";
 import simpleFeedbackRouter from "./src/routes/simplefeedback.route";
 import publicRouter from "./src/routes/public.route";
+import spanRouter from "./src/routes/span.route";
 import cors from "cors";
 
 const app: Express = express();
@@ -48,6 +49,8 @@ app.use("/api/log", logRouter);
 app.use("/api/feedback", feedbackRouter);
 
 app.use("/api/formfeedback", simpleFeedbackRouter);
+
+app.use("/api/spans", spanRouter);
 
 app.get("/", (req: Request, res: Response) => {
   res.status(200).send("Voiceflow | Arize Phoenix Service");

@@ -5,6 +5,7 @@ import {
   OpenInferenceSpanKind,
   SemanticConventions,
 } from "@arizeai/openinference-semantic-conventions";
+import { spanService } from "../services/span.service";
 
 const VOICEFLOW_DOMAIN = process.env.VOICEFLOW_DOMAIN || 'general-runtime.voiceflow.com';
 const VOICEFLOW_API_KEY = process.env.VOICEFLOW_API_KEY || null;
@@ -73,18 +74,8 @@ export const interact = async (req: Request, res: Response) => {
       const tracer = trace.getTracer("voiceflow-service");
       tracer.startActiveSpan("chat", { startTime: startTime }, async (parentSpan) => {
       const spanId = parentSpan.spanContext().spanId || null;
-
-      if(VOICEFLOW_API_KEY && spanId) {
-        fetch(`https://${VOICEFLOW_DOMAIN}/state/user/${userId}/variables`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': VOICEFLOW_API_KEY
-          },
-          body: JSON.stringify({
-            phoenixSpanID: spanId
-          }),
-        });
+      if (spanId) {
+        spanService.addSpanId(spanId);
       }
 
       if (!response.ok) {
@@ -104,6 +95,19 @@ export const interact = async (req: Request, res: Response) => {
           });
           parentSpan.end();
         return
+      }
+
+      if(VOICEFLOW_API_KEY && spanId) {
+        fetch(`https://${VOICEFLOW_DOMAIN}/state/user/${userId}/variables`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': VOICEFLOW_API_KEY
+          },
+          body: JSON.stringify({
+            phoenixSpanID: spanId
+          }),
+        });
       }
 
       // Helper to get action data (support request/action in DM response)
