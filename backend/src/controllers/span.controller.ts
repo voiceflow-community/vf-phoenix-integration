@@ -10,9 +10,17 @@ interface Span {
 }
 
 export const getCurrentSpan = async (req: Request, res: Response) => {
-  const { userId } = req.params;
-  const span = db.prepare('SELECT * FROM spans WHERE user_id = ? AND is_current = true').get(userId);
-  return res.json(span || null);
+  try {
+    const { userId } = req.params;
+    const span = db.prepare('SELECT * FROM spans WHERE user_id = ? AND is_current = true').get(userId);
+    return res.json(span || null);
+  } catch (error) {
+    console.error('Error getting current span:', error);
+    return res.status(500).json({
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
 };
 
 export const getNextSpan = async (req: Request, res: Response) => {
