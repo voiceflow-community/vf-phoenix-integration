@@ -31,11 +31,6 @@ export const interact = async (req: Request, res: Response) => {
           config: {
             ...req.body.config, // Preserve existing config
             excludeTypes: ['flow', 'block'], // Override only excludeTypes
-          },
-          state: {
-            variables: {
-              "phoenixSpanID": ''
-            }
           }
         };
 
@@ -66,9 +61,10 @@ export const interact = async (req: Request, res: Response) => {
             ...req.body.config, // Preserve existing config
             excludeTypes: ['flow', 'block'], // Override only excludeTypes
           },
-          state: {
-            variables: {
-              "phoenixSpanID": spanId
+          event: {
+            type: "launch",
+            payload: {
+              phoenixSpanID: spanId
             }
           }
         };
