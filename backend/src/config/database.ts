@@ -9,7 +9,7 @@ try {
   const dbPath = process.env.DB_PATH || path.join(process.cwd(), 'spans.db');
 
   db = new Database(dbPath, {
-    verbose: console.log // This will help with debugging
+    // verbose: console.log // This will help with debugging
   });
 
   // Create spans table if it doesn't exist

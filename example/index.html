@@ -6,15 +6,15 @@
     </head>
     <body>
       <script type="module">
-        import { FeedbackExtension } from 'https://demo-agent.proxy-voiceflow.com/extensions.js';
+        import { FeedbackExtension } from 'https://YOUR_URL/extensions.js';
         (function (d, t) {
           var v = d.createElement(t),
             s = d.getElementsByTagName(t)[0];
           v.onload = function () {
             window.voiceflow.chat.load({
-              verify: { projectID: '67220116d6009327e2308daa' },
-              url: 'https://phoenix-demo-logs.proxy-voiceflow.com',
-              versionID: 'development',
+              verify: { projectID: '[YOUR_PROJECT_ID]' },
+              url: 'https://[YOUR_BACKEND_URL]',
+              versionID: 'development', // or production
               user: {
                 name: 'Demo User',
               },

@@ -18,7 +18,6 @@ you can use the .env.template file as a template.
 - `PHOENIX_CSRF_TRUSTED_ORIGINS` - Allowed origins for Phoenix traces (default: http://localhost:5252)
 - `COLLECTOR_ENDPOINT` - http://phoenix:6006/v1/traces
 - `VOICEFLOW_DOMAIN` - Voiceflow domain (default: general-runtime.voiceflow.com)
-- `VOICEFLOW_API_KEY` - Voiceflow API key (required only if you want to send the span id to your agent)
 - `ALLOWED_ORIGINS` - Allowed origins for Phoenix traces (default: http://localhost:5252)
 - `PORT` - Backend server port (default: 5252)
 - `NODE_ENV` - Node environment (default: development - allows all origins)
@@ -78,6 +77,28 @@ The service also exposes the following endpoints:
   - Query Parameters:
     - `score`: Either '1' (👍) or '-1' (👎)
     - `spanId`: The ID of the span to provide feedback for
+
+### Span Management Endpoints
+- `GET /api/span/user/:userId/current` - Get the current active span for a user
+- `GET /api/span/user/:userId/next` - Get the next span after the current one
+  - Query Parameters:
+    - `spanId` (optional): Get the next span after a specific span ID
+- `GET /api/span/user/:userId/all` - Get all spans for a user
+
+Example usage:
+```bash
+# Get current span
+curl http://localhost:5252/api/span/user/123/current
+
+# Get next span after current
+curl http://localhost:5252/api/span/user/123/next
+
+# Get next span after specific span (useful for the chat widget extension and rating from a previous turn)
+curl http://localhost:5252/api/span/user/123/next?spanId=span_abc123
+
+# Get all spans
+curl http://localhost:5252/api/span/user/123/all
+```
 
 ### Health Check
 - `GET /health` - Basic health check endpoint that returns `{ "status": "OK"}` if the service is running

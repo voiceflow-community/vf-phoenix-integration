@@ -6,7 +6,7 @@ export const FeedbackExtension = {
   match: ({ trace }) =>
     trace.type === 'ext_feedback' || trace.payload.name === 'ext_feedback',
   render: ({ trace, element }) => {
-    const { phoenixSpanID, endpoint } = trace.payload
+    const { phoenixSpanID, endpoint, mode = 'direct' } = trace.payload
     const feedbackContainer = document.createElement('div')
 
     feedbackContainer.innerHTML = `
@@ -82,27 +82,37 @@ export const FeedbackExtension = {
         button.addEventListener('click', function (event) {
           const feedback = this.getAttribute('data-feedback')
 
-          fetch(
-            `${endpoint}/api/formfeedback?score=${parseInt(
-              feedback
-            )}&spanId=${phoenixSpanID}`,
-            {
-              method: 'GET',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-            }
-          )
-            .then((response) => {
-              if (response.ok) {
-                console.log('Feedback submitted successfully')
-              } else {
-                console.error('Failed to submit feedback')
+          if (mode === 'direct') {
+            fetch(
+              `${endpoint}/api/formfeedback?score=${parseInt(
+                feedback
+              )}&spanId=${phoenixSpanID}`,
+              {
+                method: 'GET',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
               }
+            )
+              .then((response) => {
+                if (response.ok) {
+                  console.log('Feedback submitted successfully')
+                } else {
+                  console.error('Failed to submit feedback')
+                }
+              })
+              .catch((error) => {
+                console.error('Error submitting feedback') //, error);
+              })
+          } else {
+            window.voiceflow.chat.interact({
+              type: 'vote',
+              payload: {
+                score: parseInt(feedback),
+                spanID: phoenixSpanID,
+              },
             })
-            .catch((error) => {
-              console.error('Error submitting feedback') //, error);
-            })
+          }
 
           feedbackContainer
             .querySelectorAll('.vfrc-feedback--button')
