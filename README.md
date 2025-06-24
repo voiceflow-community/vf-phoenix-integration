@@ -110,3 +110,6 @@ To learn more about Arize Phoenix, take a look at the following resources:
 
 You can check out [the Phoenix GitHub repository](https://github.com/Arize-ai/phoenix)
 as well as some [additional documentation](https://docs.arize.com/phoenix/evaluation/evals) on how to run evals.
+
+
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=voiceflow-community_vf-phoenix-integration&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=voiceflow-community_vf-phoenix-integration)
