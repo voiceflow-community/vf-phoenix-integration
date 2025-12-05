@@ -21,6 +21,14 @@ export const log = async (req: Request, res: Response) => {
     try {
       const { messages, metadata = {}, user = "unknown", tags = [] } = req.body;
 
+      // Validate 'user': only allow word chars, max 64 chars
+      const SAFE_USER_REGEX = /^\w{1,64}$/;
+      if (!SAFE_USER_REGEX.test(user)) {
+        return res.status(400).json({
+          error: "Invalid 'user' value in request body.",
+        });
+      }
+
       parentSpan.setAttributes({
         [SemanticConventions.OPENINFERENCE_SPAN_KIND]: OpenInferenceSpanKind.CHAIN,
         [SemanticConventions.INPUT_VALUE]: JSON.stringify({ messages }),
